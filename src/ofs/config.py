@@ -193,6 +193,9 @@ class InferenceConfig(FrozenModel):
     multiplicity: Literal["holm", "none"] = "holm"
     equivalence_margin_hurst: float = Field(0.05, gt=0)
     liquid_pairs_h4: int = Field(20, ge=1)
+    # exponents whose control estimator failed the simulation bias rule: the control is
+    # reported but does not decide whether a result counts (config/deviations.md, D2)
+    concordance_exempt: tuple[Exponent, ...] = ()
 
 
 class Period(FrozenModel):

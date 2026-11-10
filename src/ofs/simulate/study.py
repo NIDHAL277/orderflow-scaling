@@ -501,7 +501,7 @@ def cell_dir(out_dir: Path, profile: str, sim: SimulationConfig, cfg: Estimation
         "h0": {"concordance_control"},
         "hvol": {"primary_estimator", "control_estimator"},
         "hsigma": {"primary_estimator", "control_estimator"},
-        "inference": {"bootstrap": {"sd_inflation"}},
+        "inference": {"bootstrap": {"sd_inflation"}, "concordance_exempt": True},
     }
     est = cfg.model_dump(mode="json", by_alias=True, exclude=cast("IncEx", decided))
     key = model_hash([sim.model_dump(mode="json"), est, __version__], length=8)

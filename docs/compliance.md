@@ -47,6 +47,7 @@ decision or an action of the project owner is needed.
 | 3. Shuffled signs, synthetic false universes, minimal detectable effect | done — `ofs.inference.power` |
 | 4. Robustness as a specification curve | done — `ofs.inference.robustness`, 5-year volatility variant included |
 | 5. Holm on H1-H3, robustness descriptive | done |
+| Deviations after the tag, with reasons | D1 (Whittle principal for `H_σ`) and D2 (concordance only against unbiased controls), decided before any estimate on real data — `config/deviations.md`, paper section "Deviations from protocol" |
 
 ## Non-functional requirements and CI (§10)
 

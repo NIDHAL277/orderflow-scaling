@@ -83,9 +83,12 @@ full`; worst |bias| over the cells of the plausible region, noise/signal ≤ 1):
 | H0 | mixed fBm 0.001 | principal |
 | H0 control | sign ACF 0.033, quadratic-variation ratio 0.000 | QV ratio replaces the sign ACF |
 | H_vol | autocovariance GMM 0.014, moments 0.079 | GMM principal, moments control |
-| H_σ | GJR 0.121, Whittle 0.030 (H_σ ∈ [0.05, 0.15]) | neither within 0.02: GJR kept, **H2 reported as limited** |
+| H_σ | GJR 0.121, Whittle 0.030 (H_σ ∈ [0.05, 0.15]) | neither within 0.02: the rule kept GJR; deviation D1 makes Whittle principal; **H2 reported as limited** |
 | δ | proxy A 0.000 | principal |
 | calibration | median true sd / bootstrap sd over 39 cells | k = 1.14 (H0 coverage 72-94 % raw, 80-96 % with k) |
+
+Controls that fail the bias rule (moments for H_vol, GJR for H_σ) are reported but do not
+decide whether a result counts (deviation D2, [config/deviations.md](https://github.com/nidhal-v/orderflow-scaling/blob/main/config/deviations.md)).
 
 The H_σ result is itself a finding: on one year of daily data, roughness near `H = 0.1`
 cannot be estimated within 0.02 by either estimator; the five-year history variant

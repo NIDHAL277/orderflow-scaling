@@ -154,11 +154,14 @@ def test_estimate_asset_in_memory(stats_project: tuple[Project, list[dt.date]]) 
     h0 = prim.filter(pl.col("exponent") == "H0")
     assert h0["ci_low"][0] <= h0["value"][0] <= h0["ci_high"][0]
     variants = set(rows.filter(pl.col("role") == "robustness")["variant"])
-    assert "delta=10s|block=3" in variants and "daily|block=14" in variants
+    assert {"delta=10s|block=3", "delta=10s|block=14"} <= variants
     whittle = rows.filter(pl.col("estimator") == "whittle_fukasawa")
-    assert (
-        whittle.height == 1 and whittle["role"][0] == "control"
-    )  # 13 increments < 30: honestly NaN
+    role = (
+        "primary"
+        if project.estimation.hsigma.primary_estimator == "whittle_fukasawa"
+        else "control"
+    )
+    assert whittle.height == 1 and whittle["role"][0] == role  # 13 increments < 30: honestly NaN
     assert whittle["value"][0] is None or math.isfinite(whittle["value"][0])
     diag = next(
         r["diagnostics"] for r in res.rows if r["role"] == "primary" and r["exponent"] == "H0"

@@ -286,6 +286,8 @@ def estimate_asset(
             diff = float(row["value"]) - control.value
             row["diagnostics"]["control_value"] = control.value
             row["diagnostics"]["concordant"] = abs(diff) <= CONCORDANCE_MARGIN
+            if row["exponent"] in cfg.inference.concordance_exempt:  # deviation D2
+                row["diagnostics"]["control_descriptive"] = True
     return out
 
 

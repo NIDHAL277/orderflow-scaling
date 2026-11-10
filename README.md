@@ -84,16 +84,20 @@ flowchart LR
 |---|---|---|
 | `H0` | mixed fBm on aggregated variance (weighted NLS) | quadratic-variation ratio (sign ACF reported) |
 | `H_vol` | autocovariance GMM of truncated increments (the paper's method) | moments of the volume rate |
-| `H_σ` | GJR moments on daily RV — *limited*: no estimator meets the bias rule | Whittle (Fukasawa–Takabatake–Westphal) |
+| `H_σ` | Whittle (Fukasawa–Takabatake–Westphal) — *limited*: bias up to 0.03 near `H_σ = 0.1` | GJR moments on daily RV (descriptive) |
 | `δ` | runs of same-sign trades, `E[I | Q] ~ Q^δ` | same, on run duration |
 
 The roles were fixed by the pre-registered rule applied to the full simulation study
 (82 cells × 200 replications of 365 days, [§4.1](config/preregistration.md)): the paper's
 autocovariance GMM is principal for `H_vol` (worst bias 0.014, moments 0.079); the
 quadratic-variation ratio replaces the sign ACF as control of `H0` (0.033); for `H_σ`
-neither GJR (+0.121) nor Whittle (0.030) stays within 0.02 near `H_σ ∈ [0.05, 0.15]`, so
-GJR is kept and the volatility relation is reported as limited by estimator reliability.
-Bootstrap intervals are widened by the calibrated factor k = 1.14.
+neither GJR (+0.121) nor Whittle (0.030) stays within 0.02 near `H_σ ∈ [0.05, 0.15]`, and
+the volatility relation is reported as limited by estimator reliability. Bootstrap
+intervals are widened by the calibrated factor k = 1.14. Two documented deviations,
+decided before any estimate on real data ([config/deviations.md](config/deviations.md)):
+Whittle rather than GJR is principal for `H_σ` (the rule's fallback kept the more biased
+one), and controls that fail the simulation's bias rule are reported without deciding
+whether a result counts.
 
 **Forecasting (extension F).** Rolling out-of-sample forecasts of the average daily
 realised variance and traded volume over the next 1, 5 and 22 days, from the 5-year daily

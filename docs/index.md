@@ -18,6 +18,7 @@ Muhle-Karbe, Ouazzani Chahdi, Rosenbaum & Szymanski (2026).
 * [Protocol](protocol.md): pre-registration, development and confirmation samples.
 * [Operations](operations.md): daily run, monitoring, incident procedures.
 * [Compliance](compliance.md): every requirement of the specification, with its evidence.
+* [Design decisions in ten questions](design-faq.md): the choices a reviewer will question, answered.
 
 Beyond the core tests:
 

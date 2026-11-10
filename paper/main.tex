@@ -256,7 +256,8 @@ spread on short samples. The full study settled the choices: the autocovariance 
 principal for $\Hv$ (worst bias 0.014 against 0.079 for the moments); the quadratic-variation
 ratio replaces the sign autocorrelation as control of $\Hz$ (whose bias reaches 0.033); for
 $\Hs$ neither GJR ($+0.121$) nor Whittle (0.030) stays within 0.02 when
-$\Hs\in[0.05,0.15]$, so GJR is kept as the rule prescribes and the volatility relation is
+$\Hs\in[0.05,0.15]$: the rule kept GJR, a documented deviation makes the less biased
+Whittle estimator principal (Section~\ref{sec:deviations}), and the volatility relation is
 reported as limited by estimator reliability; $k=\sdInflation$.
 Table~\ref{tab:simulation} and Figure~\ref{fig:fig5_bias_maps.pdf}
 report bias, RMSE and coverage for every estimator, including the cells where it fails.
@@ -386,8 +387,23 @@ are tested under the assumption that each exponent is stable within a sample; th
 specification curve and the comparison of the two samples show how far this holds.
 
 \section{Deviations from protocol}
-None so far. Every change made after the tag \texttt{prereg-v1} is listed here with its
-reason and its effect on the results.
+\label{sec:deviations}
+Every change made after the tag \texttt{prereg-v1} is listed here with its reason and its
+effect (\texttt{config/deviations.md}). Both were decided on 2026-11-10 from the simulation
+study alone, before any estimate on real data.
+
+\textbf{D1: Whittle principal for $\Hs$.} The pre-registered rule keeps the default
+estimator when neither candidate stays within 0.02 of the truth. For $\Hs$ that kept GJR,
+whose bias reaches 0.121, over Whittle, whose bias reaches 0.030. The purpose of the rule is
+to use the estimator the simulation finds reliable, so Whittle is principal and GJR the
+control; H2 remains reported as limited.
+
+\textbf{D2: concordance only against unbiased controls.} A result was to count only if the
+principal and control estimators agree within 0.05. The controls of $\Hv$ (moments,
+bias up to 0.079) and of $\Hs$ (GJR, 0.121) are biased by more than that margin, so a correct
+result could fail the check because of the control. For these two exponents the control is
+reported but does not decide whether the result counts; for $\Hz$ and $\delta$ the rule is
+unchanged.
 
 \section{Conclusion}
 To be written after the confirmatory tests.

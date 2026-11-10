@@ -421,12 +421,19 @@ def run_tests(
                 ]
         rows.append(h4_row(project, est, boot, sample, market))
     rows += h5_rows(project, est, boot, sample)
+    exempt = set(inf.concordance_exempt)
+    exponent_of = {rel.code: rel.exponent for rel in RELATIONS}
     for row in rows:  # concordance between primary and control estimator sets
         key_p = (row["market"], "primary", row["hypothesis"])
         key_c = (row["market"], "control", row["hypothesis"])
         if row["estimator_set"] == "primary" and key_p in decisions and key_c in decisions:
             (dp, gp), (dc, gc) = decisions[key_p], decisions[key_c]
             row["details"]["control_decision"] = dc
+            if exponent_of.get(row["hypothesis"]) in exempt:
+                # the control failed the simulation bias rule: reported, not a gate (D2)
+                row["details"]["control_descriptive"] = True
+                row["details"]["counts"] = True
+                continue
             row["details"]["counts"] = bool(
                 dp == dc
                 and math.isfinite(gp)

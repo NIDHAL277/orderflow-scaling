@@ -5,6 +5,7 @@ from __future__ import annotations
 import datetime as dt
 import json
 import math
+from typing import Any
 
 import numpy as np
 import polars as pl
@@ -300,6 +301,7 @@ def test_run_tests_end_to_end(project: Project) -> None:
     assert by[("H2", "spot", "primary")]["decision"] == "rejected"
     assert by[("H2", "spot", "primary")]["p_holm"] >= by[("H2", "spot", "primary")]["p_value"]
     assert json.loads(by[("H1", "spot", "primary")]["details"])["counts"] is True
+    assert json.loads(by[("H1", "spot", "primary")]["details"])["control_descriptive"] is True
     h4 = by[("H4", "spot", "primary")]
     assert h4["decision"] == "descriptive" and h4["n_assets"] == 3
     h5 = [r for r in tests.iter_rows(named=True) if r["hypothesis"] == "H5"]
@@ -349,6 +351,39 @@ def test_controls_and_specification_curve(project: Project) -> None:
     assert cut.height == 3  # one per relation; S02 alarmed after the development sample
     assert (cut["n_assets"] == base["n_assets"] - 1).all()
     assert DataLayout(project.data_dir).robustness_file("development").exists()
+
+
+def test_biased_control_gates_only_non_exempt_exponents(project: Project) -> None:
+    """Deviation D2: a control biased beyond the margin no longer sinks an exempt result."""
+    import yaml
+
+    write_results(project, "confirmation")
+    layout = DataLayout(project.data_dir)
+    control_vol = references(project, "control")["Hvol"]
+    for path in (layout.estimates_file("confirmation"), layout.bootstrap_file("confirmation")):
+        df = pl.read_parquet(path)
+        shift = (pl.col("exponent") == "Hvol") & (pl.col("estimator") == control_vol.estimator)
+        df = df.with_columns(
+            pl.when(shift).then(pl.col("value") + 0.10).otherwise(pl.col("value")).alias("value")
+        )
+        write_parquet_atomic(df, path)
+
+    def h1_details(proj: Project) -> dict[str, Any]:
+        tests, _ = run_tests(proj, "confirmation", ("spot",))
+        row = tests.filter(
+            (pl.col("hypothesis") == "H1") & (pl.col("estimator_set") == "primary")
+        ).row(0, named=True)
+        return dict(json.loads(row["details"]))
+
+    exempt = h1_details(project)
+    assert exempt["counts"] is True and exempt["control_descriptive"] is True
+    assert exempt["control_decision"] != "compatible"  # the biased control disagrees
+    path = project.config_dir / "estimation.yaml"
+    cfg = yaml.safe_load(path.read_text(encoding="utf-8"))
+    cfg["inference"]["concordance_exempt"] = []
+    path.write_text(yaml.safe_dump(cfg, sort_keys=False), encoding="utf-8")
+    strict = h1_details(Project.discover(project.root))
+    assert strict["counts"] is False and "control_descriptive" not in strict
 
 
 def test_negative_controls_and_block_length() -> None:

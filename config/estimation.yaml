@@ -36,8 +36,8 @@ hsigma:
   q_grid: [0.5, 1.0, 1.5, 2.0, 3.0]
   # Spec default: GJR principal, Whittle (Fukasawa-Takabatake-Westphal) control.
   # Preliminary simulations: GJR on daily RV is biased upward near H = 0; see preregistration.
-  primary_estimator: gjr           # gjr | whittle_fukasawa
-  control_estimator: whittle_fukasawa
+  primary_estimator: whittle_fukasawa  # deviation D1 (config/deviations.md); gjr | whittle_fukasawa
+  control_estimator: gjr
   daily:
     return_s: 300
     estimators: [gjr, whittle_fukasawa, pvariation]
@@ -64,6 +64,7 @@ inference:
   alpha: 0.01
   multiplicity: holm
   equivalence_margin_hurst: 0.05
+  concordance_exempt: [Hvol, Hsigma]   # controls failing the simulation bias rule: descriptive (deviation D2)
   liquid_pairs_h4: 20
 
 split:
