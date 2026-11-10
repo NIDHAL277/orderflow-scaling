@@ -119,7 +119,28 @@ scaling law.
 `ofs simulate forecast` simulates the model of the exact predictor (H ∈ {0.05, 0.1, 0.2},
 noise sd ∈ {0, 0.3}, ν = 0.3, 1,500 days) and reports each model's QLIKE relative to
 `har_log` (`data/simulation/forecast_study.parquet`, report table `tab:forecast-sim`).
-Exploratory run (4 replications, H = 0.1, noise 0.3):
+
+Full run (2026-11-10, 10 replications per cell; mean ratio to `har_log`, with the range
+over the six (H, noise) cells):
+
+| Model | h = 1 | h = 5 | h = 22 |
+|---|---|---|---|
+| `rough_rolling` (H by Whittle on the window) | 0.988-0.992 | 0.960-0.979 | 0.873-0.932 |
+| `rough_dev` (true H) | 0.986-0.989 | 0.946-0.974 | 0.860-0.927 |
+| `rough_gjr` (published kernel) | 0.995-1.083 | 0.983-1.083 | 0.901-0.999 |
+| `ar_log` | 1.003-1.015 | 0.996-1.030 | 0.968-1.037 |
+| `har` (levels) | 1.008-1.609 | 1.015-2.307 | 1.015-1.680 |
+| `rw` | 1.08-1.61 | 1.27-2.65 | 1.55-3.87 |
+
+The exact predictor beats HAR in 90-100 % of the replications at one day and in 70-90 % at
+22 days; the Whittle H of the window is close to the truth (0.105 for 0.1, 0.215 for 0.2;
+0.10 for 0.05 with noise, where roughness and noise are hardest to separate). The published
+kernel loses to HAR at short horizons once there is measurement noise (+8 % at H = 0.05)
+but helps at 22 days. HAR on levels is unstable at H = 0.2 (ratios up to 2.3 with a large
+spread): heavy-tailed levels defeat the insanity filter, which is why the logs version is
+the benchmark.
+
+Earlier exploratory run (4 replications, H = 0.1, noise 0.3):
 
 | Model | h = 1 | h = 5 | h = 22 |
 |---|---|---|---|

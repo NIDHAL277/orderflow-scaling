@@ -363,9 +363,10 @@ pair is scaled by the reference's mean loss, averaged across pairs each day, and
 with the same Diebold--Mariano statistic; a stationary bootstrap of dates gives the
 interval of the average loss ratio. F1 compares the rough predictor with HAR, F2 the
 order-flow $H$ with the volatility $H$ (the scaling law passes if they are equivalent within
-2\,\%), F3 repeats F1 for volume. On simulated rough volatility ($H = 0.1$, measurement
-noise), the rough predictor lowers QLIKE by 1\,\%, 2\,\% and 8.5\,\% at 1, 5 and 22 days
-against HAR (table~\ref{tab:forecast-sim}). Results: F1 \resultFOne; F2 \resultFTwo{}
+2\,\%), F3 repeats F1 for volume. On simulated rough volatility the rough predictor lowers
+QLIKE against HAR by about 1\,\%, 2--4\,\% and 7--13\,\% at 1, 5 and 22 days across
+$H\in\{0.05,0.1,0.2\}$ with and without measurement noise, and wins in 70--100\,\% of the
+replications (table~\ref{tab:forecast-sim}). Results: F1 \resultFOne; F2 \resultFTwo{}
 (spot, 22 days).
 \tableif{forecast.tex}
 \tableif{forecast_sim.tex}

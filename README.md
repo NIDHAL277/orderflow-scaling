@@ -102,8 +102,9 @@ and an **exact rough predictor** (Gaussian conditioning under the day-averaged f
 noise model of the Whittle estimator) with H estimated, or fixed at the order-flow value
 `2 Ĥ0 − 3/2`. QLIKE and squared error, Diebold–Mariano tests pooled across pairs, model
 confidence set; no trading rule or P&L (excluded by the specification). On simulated rough
-volatility the exact predictor beats HAR by 8.5 % of QLIKE at 22 days, while the published
-kernel does not ([docs/forecasting.md](docs/forecasting.md), pre-registration §10).
+volatility (H 0.05-0.2, with and without noise) the exact predictor beats HAR by 1 % of
+QLIKE at one day and 7-13 % at 22 days, while the published kernel loses at short horizons
+([docs/forecasting.md](docs/forecasting.md), pre-registration §10).
 In production, the daily run publishes every pair's forecasts for the next day, week and
 month and scores them as the days pass: a live track record (`GET /forecast/live`).
 
