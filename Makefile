@@ -72,6 +72,9 @@ forecast: ## Forecasting extension F: development (prereg-v1), then confirmation
 	$(OFS) forecast --sample development --jobs $(JOBS)
 	$(OFS) forecast --sample confirmation --jobs $(JOBS)
 
+changepoints: ## Change-point monitor of H0 on 14-day blocks (exploratory, after prereg-v1)
+	$(OFS) changepoints --to $(TO)
+
 sim-forecast: ## Forecast models on simulated rough volatility (QLIKE relative to HAR)
 	$(OFS) simulate forecast --reps 10 --jobs $(JOBS)
 

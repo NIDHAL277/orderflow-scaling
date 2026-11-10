@@ -27,6 +27,7 @@ nav:
   - Literature watch: literature-watch.md
   - Estimators: estimators.md
   - Forecasting: forecasting.md
+  - Change-point monitor: changepoints.md
   - Protocol: protocol.md
   - Operations: operations.md
   - Decisions:

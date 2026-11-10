@@ -359,11 +359,22 @@ class DailyConfig(FrozenModel):
     recheck_days: int = Field(30, ge=1)  # how far back the weekly recheck goes
 
 
+class ChangepointConfig(FrozenModel):
+    """Change-point detection on block estimates of H0 (spec §4 extension, exploratory)."""
+
+    block_days: int = Field(14, ge=5)
+    min_days: int = Field(10, ge=1)  # observed days needed for a block estimate
+    k: float = Field(0.5, gt=0)  # CUSUM reference value, in reference sds
+    delta: float = Field(1.0, gt=0)  # Shiryaev-Roberts shift, in reference sds
+    arl0_blocks: float = Field(50.0, gt=1)  # in-control average run length (blocks)
+
+
 class MonitoringConfig(FrozenModel):
-    """Health-check ping and disk alert (spec §11)."""
+    """Health-check ping, disk alert (spec §11) and change-point monitoring of H0."""
 
     healthchecks_url_env: str = "OFS_HEALTHCHECKS_URL"
     disk_alert_fraction: float = Field(0.8, gt=0, le=1)
+    changepoint: ChangepointConfig = ChangepointConfig()
 
 
 class PipelineConfig(FrozenModel):

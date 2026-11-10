@@ -102,6 +102,10 @@ class Store:
         """Every live forecast with its realised target once complete (track record)."""
         return self._read(self.layout.forecast_dir / "live_scored.parquet")
 
+    def changepoints(self) -> pl.DataFrame:
+        """Block estimates of H0 with the change-point detectors (``ofs changepoints``)."""
+        return self._read(self.layout.root / "monitoring" / "changepoints.parquet")
+
     def forecast_simulation(self) -> pl.DataFrame:
         """Forecast models on simulated rough volatility (``ofs simulate forecast``)."""
         return self._read(self.layout.simulation_dir / "forecast_study.parquet")

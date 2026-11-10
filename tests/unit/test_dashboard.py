@@ -73,6 +73,22 @@ def results_dir(tmp_path_factory: pytest.TempPathFactory) -> Path:
         spec, h_values=(0.1,), noise_values=(0.3,), reps=1, n_days=420, lags=(1, 2, 4, 8)
     )
     write_parquet_atomic(summary, layout.simulation_dir / "forecast_study.parquet")
+    # change-point monitor of H0: synthetic blocks with a regime change, for every pair
+    import polars as pl
+    from test_changepoint import MeanEstimator, synthetic_bundle
+
+    from ofs.config import date_range
+    from ofs.inference import changepoint as cp
+
+    days = date_range(dt.date(2024, 11, 1), dt.date(2026, 6, 30))
+    bundle = synthetic_bundle(days, dt.date(2026, 3, 1), seed=1)
+    blocks = cp.block_estimates(MeanEstimator(), bundle, days, 14, 10)
+    out = cp.monitor(blocks, project.estimation.split.development, k=0.5, delta=1.0, arl0=50.0)
+    symbols = pl.read_parquet(layout.estimates_file("confirmation"))["symbol"].unique().to_list()
+    frames = [
+        out.with_columns(pl.lit(s).alias("symbol"), pl.lit("spot").alias("market")) for s in symbols
+    ]
+    write_parquet_atomic(pl.concat(frames), layout.root / "monitoring" / "changepoints.parquet")
     return project.data_dir
 
 

@@ -84,6 +84,11 @@ kernel does not ([docs/forecasting.md](docs/forecasting.md), pre-registration §
 In production, the daily run publishes every pair's forecasts for the next day, week and
 month and scores them as the days pass: a live track record (`GET /forecast/live`).
 
+**Regime monitor (spec extension).** A CUSUM and a Shiryaev–Roberts detector watch 14-day
+block estimates of `H0` against the development sample, with thresholds calibrated for
+autocorrelated blocks; alarms appear on the asset sheet and in the weekly status
+([docs/changepoints.md](docs/changepoints.md)).
+
 ## Status (2026-11-09)
 
 | Phase | State |

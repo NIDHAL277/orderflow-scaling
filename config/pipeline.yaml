@@ -43,3 +43,6 @@ daily:
 monitoring:
   healthchecks_url_env: OFS_HEALTHCHECKS_URL
   disk_alert_fraction: 0.8
+  # change-point detection on H0 (spec §4 extension): blocks of 14 days, reference =
+  # development sample; thresholds for an in-control average run length of 50 blocks
+  changepoint: {block_days: 14, min_days: 10, k: 0.5, delta: 1.0, arl0_blocks: 50}

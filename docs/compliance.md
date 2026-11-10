@@ -84,5 +84,5 @@ decision or an action of the project owner is needed.
 | Item | State |
 |---|---|
 | Forecasting extension (owner's request): daily volatility and volume, 1/5/22 days, rough predictors against HAR, F1-F3 pre-registered (§10) | done — `ofs.forecast`, `ofs forecast`, `ofs simulate forecast`, [forecasting](forecasting.md), [ADR 0013](adr/0013-forecasting-extension.md); no trading rule or P&L, which §4 excludes |
-| Extension "change-point detection on H" (§4, after v1) | not started — the forecasting docs list regime changes as a limitation |
+| Extension "change-point detection on H" (§4, after v1) | done — `ofs changepoints`, weekly in the daily run, asset page and `GET /monitor/changepoints` ([monitoring](changepoints.md)) |
 | Extensions kdb+/q, other exchanges, L2 collector (§4, after v1) | not started |

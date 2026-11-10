@@ -161,7 +161,8 @@ on the dashboard page *Forecasting*, and in the report (table `tab:forecast`, fi
 ## Limitations
 
 * The rough predictor assumes the H of the window holds over the horizon; regime changes
-  (spec extension: change-point detection on H) are not modelled.
+  are not modelled by the forecasts (the change-point monitor of H0,
+  [changepoints](changepoints.md), flags them separately).
 * No weekday effect is modelled for any model (weekends trade less in crypto).
 * `rough_theory` floors `2 Ĥ0 − 3/2` at 0.01: for `Ĥ0 < 0.755` the theory predicts a
   non-positive H_σ, which no fBm predictor can use; the number of floored pairs is reported.

@@ -1,7 +1,8 @@
 """Read-only API over the result tables.
 
 Endpoints: ``GET /health``, ``/assets``, ``/estimates/{symbol}``, ``/tests``,
-``/forecast/tests``, ``/forecast/evaluation``, ``/forecasts/{symbol}`` and ``/forecast/live``.
+``/forecast/tests``, ``/forecast/evaluation``, ``/forecasts/{symbol}``, ``/forecast/live`` and
+``/monitor/changepoints``.
 
 Run with ``ofs api`` or ``uvicorn --factory ofs.api.app:create_app``.
 """
@@ -167,5 +168,20 @@ def create_app(data_dir: Path | None = None, rate_per_minute: int | None = None)
             vol = annualized_vol(r["forecast"]) if target == "volatility" else None
             rows.append(LiveForecastOut(**r, annualized_vol=vol))
         return rows
+
+    @app.get("/monitor/changepoints", summary="Regime changes of H0 (CUSUM, Shiryaev-Roberts)")
+    def monitor_changepoints(
+        symbol: Annotated[str | None, Query()] = None,
+        alarms_only: bool = False,
+    ) -> list[dict[str, Any]]:
+        df = store.changepoints()
+        if df.height == 0:
+            return []
+        if symbol:
+            df = df.filter(pl.col("symbol") == symbol.upper())
+        if alarms_only:
+            df = df.filter(pl.col("cusum_alarm") | pl.col("sr_alarm"))
+        out: list[dict[str, Any]] = df.sort("symbol", "market", "block_start").to_dicts()
+        return out
 
     return app

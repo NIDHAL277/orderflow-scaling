@@ -7,7 +7,9 @@
    re-published over the last ``recheck_days`` are applied (spec §6.4);
 3. rolling 24-month estimates (the confirmatory tests stay frozen), then the live
    forecasts of daily volatility and volume for the next 1, 5 and 22 days and the live
-   track record of past forecasts (``ofs.forecast.live``);
+   track record of past forecasts (``ofs.forecast.live``); once a week, the
+   change-point monitor of H0 (``ofs.inference.changepoint``), whose alarms are reported
+   in the status without failing the run;
 4. Healthchecks.io ping on success, alert otherwise; disk alert above 80 %.
 
 Exit codes: 0 done, 75 files not yet published (retry later), 1 failure.
@@ -122,6 +124,24 @@ def run_daily(
             except ProtocolError as exc:
                 log.warning("rolling_estimates_skipped", reason=str(exc))
                 rolling_ok = False
+        alarms: list[str] | None = None
+        if rolling_ok and day.weekday() == pcfg.daily.recheck_weekday:
+            from ofs.inference.changepoint import run_changepoints
+
+            try:  # weekly regime monitor of H0; alarms inform, they never fail the run
+                cps = run_changepoints(project, markets, day)
+                latest = (
+                    cps.filter(pl.col("block_end") == pl.col("block_end").max())
+                    if cps.height
+                    else cps
+                )
+                alarms = sorted(
+                    f"{r['symbol']}/{r['market']}"
+                    for r in latest.iter_rows(named=True)
+                    if r["cusum_alarm"] or r["sr_alarm"]
+                )
+            except Exception as exc:
+                log.error("changepoints_failed", error=repr(exc)[:500])
         live_ok = None
         if rolling_ok and project.estimation.forecast is not None:
             from ofs.forecast.live import forecast_live, score_live
@@ -154,6 +174,7 @@ def run_daily(
             blocked=summary.blocked[:50],
             rolling_estimates=rolling_ok,
             live_forecasts=live_ok,
+            changepoint_alarms=alarms,
             disk_used_fraction=round(disk, 4),
             last_error="; ".join(problems) or None,
         )

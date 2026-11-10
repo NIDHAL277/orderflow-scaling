@@ -573,6 +573,37 @@ def simulate_forecast(
     )
 
 
+@app.command()
+@writes_data
+def changepoints(
+    ctx: typer.Context,
+    to: DateOpt,
+    market: MarketChoice = MarketChoice.all,
+    symbols: Annotated[list[str] | None, typer.Option("--symbol")] = None,
+) -> None:
+    """Change-point detection on 14-day block estimates of H0 (CUSUM, Shiryaev-Roberts)."""
+    from ofs.inference.changepoint import run_changepoints
+    from ofs.protocol import ProtocolError, check_estimation_allowed
+
+    project = _project(ctx)
+    try:
+        check_estimation_allowed(project, "rolling")  # exploratory, like the rolling estimates
+    except ProtocolError as exc:
+        typer.echo(f"protocol: {exc}", err=True)
+        raise typer.Exit(code=2) from exc
+    out = run_changepoints(project, _markets(market), to.date(), symbols=symbols)
+    if out.height == 0:
+        typer.echo("no block after the reference period yet")
+        return
+    alarms = out.filter(out["cusum_alarm"] | out["sr_alarm"])
+    typer.echo(f"{out.height} blocks monitored, {alarms.height} alarms")
+    for row in alarms.iter_rows(named=True):
+        typer.echo(
+            f"{row['symbol']:<12} {row['market']:<5} {row['block_start']}  z={row['z']:+.2f} "
+            f"cusum={row['cusum_alarm']} sr={row['sr_alarm']}"
+        )
+
+
 class ForecastSampleChoice(StrEnum):
     """Evaluated period of the forecasting extension."""
 

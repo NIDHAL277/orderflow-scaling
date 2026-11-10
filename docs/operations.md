@@ -33,7 +33,9 @@ docker compose exec pipeline ofs status
    (`data/forecast/live/{day}.parquet`) and the live track record of past forecasts whose
    target is now complete (`data/forecast/live_scored.parquet`). Both need the protocol to
    allow the rolling estimates; a failure sets `live_forecasts: false` in the status and
-   sends a fail ping, the data of the day being already saved.
+   sends a fail ping, the data of the day being already saved. On the weekly recheck day,
+   the change-point monitor of H0 runs too; pairs with an alarm in the latest block are
+   listed in the status (`changepoint_alarms`) without failing the run.
 4. Healthchecks.io ping on success, fail ping otherwise (and at 12:xx UTC for files still
    absent, which become "missing").
 5. Sunday 04:00: backup of `daily_stats`, `estimates`, `tests` to R2.
