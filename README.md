@@ -89,6 +89,11 @@ block estimates of `H0` against the development sample, with thresholds calibrat
 autocorrelated blocks; alarms appear on the asset sheet and in the weekly status
 ([docs/changepoints.md](docs/changepoints.md)).
 
+**L2 collector (spec extension).** `ofs collect-l2` keeps local order books of the
+perpetuals from the WebSocket diff-depth stream (Binance's sequence rules, resync on any
+gap) and records 1-second books and every trade to hourly Parquet files, for a future
+propagator model ([docs/l2-collector.md](docs/l2-collector.md)).
+
 ## Status (2026-11-09)
 
 | Phase | State |

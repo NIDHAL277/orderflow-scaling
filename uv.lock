@@ -945,6 +945,7 @@ dependencies = [
     { name = "truststore" },
     { name = "typer" },
     { name = "uvicorn" },
+    { name = "websockets" },
 ]
 
 [package.dev-dependencies]
@@ -981,6 +982,7 @@ requires-dist = [
     { name = "truststore", specifier = ">=0.10" },
     { name = "typer", specifier = ">=0.15" },
     { name = "uvicorn", specifier = ">=0.34" },
+    { name = "websockets", specifier = ">=15" },
 ]
 
 [package.metadata.requires-dev]

@@ -32,6 +32,7 @@ dependencies = [
     "structlog>=25.1",
     "matplotlib>=3.10",
     "streamlit>=1.42",
+    "websockets>=15",
 ]
 
 [project.scripts]

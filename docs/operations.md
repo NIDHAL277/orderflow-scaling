@@ -50,6 +50,13 @@ once with code 75 (cron retries it the next hour). The lock belongs to the open 
 a killed process never leaves it behind. `status`, `quality`, the API and the dashboard
 only read and never wait.
 
+## L2 collector (optional, always on)
+
+`docker compose --profile l2 up -d collector` starts `ofs collect-l2` for BTCUSDT, ETHUSDT
+and SOLUSDT (1-second books, 20 levels, every trade) into `data/l2/`. It takes no pipeline
+lock. Its status event every minute counts messages, snapshots, resyncs and reconnects; a
+growing resync count means a lossy network. See [L2 collector](l2-collector.md).
+
 ## Backfill and data quality (O1)
 
 ```bash

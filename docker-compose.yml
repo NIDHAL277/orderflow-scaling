@@ -37,6 +37,16 @@ services:
     volumes:
       - ./data:/data:ro
 
+  collector:
+    # continuous L2 books and trades of the most liquid perpetuals (spec §4 extension);
+    # writes only data/l2/, takes no pipeline lock
+    <<: *ofs
+    command: ["ofs", "collect-l2", "--symbol", "BTCUSDT", "--symbol", "ETHUSDT", "--symbol", "SOLUSDT",
+              "--levels", "20", "--interval-ms", "1000"]
+    volumes:
+      - ./data:/data
+    profiles: ["l2"]   # opt-in: docker compose --profile l2 up -d
+
   caddy:
     build:
       context: .

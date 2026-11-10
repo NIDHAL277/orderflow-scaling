@@ -604,6 +604,30 @@ def changepoints(
         )
 
 
+@app.command("collect-l2")
+def collect_l2(
+    ctx: typer.Context,
+    symbols: Annotated[list[str], typer.Option("--symbol", help="USD-M perpetual, e.g. BTCUSDT")],
+    levels: int = 20,
+    interval_ms: int = 1000,
+    duration_s: Annotated[
+        float | None, typer.Option(help="Stop after this many seconds (default: run until stopped)")
+    ] = None,
+) -> None:
+    """Continuous L2 collector of USD-M perpetuals: sampled books and trades (spec §4)."""
+    import asyncio
+    from dataclasses import asdict
+
+    from ofs.collect.stream import Collector
+
+    collector = Collector(symbols, _project(ctx).data_dir, levels=levels, interval_ms=interval_ms)
+    try:
+        stats = asyncio.run(collector.run(duration_s))
+    except KeyboardInterrupt:  # Ctrl+C on Windows: the files were flushed on the way out
+        return
+    typer.echo(json.dumps(asdict(stats)))
+
+
 class ForecastSampleChoice(StrEnum):
     """Evaluated period of the forecasting extension."""
 

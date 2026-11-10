@@ -28,6 +28,7 @@ deleted as soon as its windows and event-time statistics are written.
 | M5 Estimators | `ofs.estimators` | daily statistics → `estimates` | bias < 0.02 and 95 % coverage in [93 %, 97 %] on the grid (documented where it fails) |
 | M6 Inference | `ofs.inference` | estimates + replicates → `tests` | size at 1 % in [0.5 %, 2 %] on synthetic universes |
 | F Forecast | `ofs.forecast` | 5-year daily history + development estimates → `forecast/` | no forecast reads a day after its origin; exact predictor = conditional expectation in simulation; wins under simulated rough volatility |
+| L2 Collect | `ofs.collect` | WebSocket depth + trades → `l2/` | Binance's sequence rules tested on scripted gaps; live check without resync |
 | M7 Report | `ofs.report` | tables → `paper/` | `make report` |
 | M8 API | `ofs.api` | tables → JSON | read-only, rate-limited |
 | M9 Dashboard | `dashboards/app.py` | tables → web | five pages (forecasting added) |
@@ -55,6 +56,8 @@ data/
   estimates/estimates_{sample}.parquet         + bootstrap replicates and day indices
   tests/tests_{sample}.parquet                 + residuals, controls, robustness
   forecast/forecasts_{sample}.parquet          + evaluation_{sample}, tests_{sample} (F1-F3)
+  l2/um/{symbol}/{day}/{HH}_{book|trades}.parquet   L2 collector (optional)
+  monitoring/changepoints.parquet              change-point monitor of H0
   simulation/summary_{profile}.parquet         + study_{profile}, cells_{profile}_{hash}/ (checkpoints),
                                                forecast_study (forecast models on simulated data)
   quality/day_states.parquet                   O1: the state of every pair-day (ofs quality)
