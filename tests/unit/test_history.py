@@ -75,6 +75,9 @@ def test_daily_rv_keeps_complete_days(tmp_path: Path) -> None:
     first_day = kl.filter(pl.col("open_time_us") < second)
     rv, n = st.realized_variance(first_day["close"].to_numpy(), 60, 300)
     assert out["rv_5m"][0] == pytest.approx(rv) and out["n_5m"][0] == n == 288
+    # traded volume and trade count for the forecasting extension (100 and 10 per minute)
+    assert out["quote_volume"].to_list() == pytest.approx([144_000.0, 144_000.0])
+    assert out["n_trades"].to_list() == [14_400, 14_400]
 
 
 def test_history_tasks_follow_renames_and_perpetual_symbols(project: Project) -> None:

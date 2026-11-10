@@ -263,3 +263,85 @@ def quality_table(quality: pl.DataFrame, path: Path) -> Path:
         "tab:quality",
         "lrrrrrrrr",
     )
+
+
+FORECAST_NAMES = {
+    "rw": "random walk",
+    "ar_log": "AR(5), log",
+    "har": "HAR",
+    "har_log": "HAR, log",
+    "rough_gjr": "rough, GJR kernel",
+    "rough_rolling": "rough, $H$ estimated",
+    "rough_dev": r"rough, $\hat H_\sigma$ (dev.)",
+    "rough_theory": r"rough, $2\hat H_0 - 3/2$",
+}
+
+
+def forecast_table(tests: pl.DataFrame, path: Path) -> Path:
+    """Table of the pooled forecast comparisons F1-F3 (extension F)."""
+    rows = []
+    if tests.height:
+        for r in tests.sort("hypothesis", "market", "horizon").iter_rows(named=True):
+            ci = f"[{tex(r['ci_low'])}, {tex(r['ci_high'])}]" if r["ci_low"] is not None else "--"
+            rows.append(
+                [
+                    r["hypothesis"],
+                    tex(r["target"]),
+                    tex(r["market"]),
+                    str(r["horizon"]),
+                    f"{FORECAST_NAMES.get(r['model'], tex(r['model']))} / "
+                    f"{FORECAST_NAMES.get(r['reference'], tex(r['reference']))}",
+                    tex(r["ratio"]),
+                    ci,
+                    tex(r["p_holm"], 4),
+                    tex(r["decision"]),
+                ]
+            )
+    return write_table(
+        path,
+        [
+            "",
+            "Target",
+            "Market",
+            "$h$",
+            "Model / reference",
+            "Ratio",
+            "95\\% CI",
+            "$p$ (Holm)",
+            "Decision",
+        ],
+        rows,
+        "Forecasting (extension F): mean QLIKE of the model relative to the reference, "
+        "averaged over pairs, for the average of the next $h$ days; CI by stationary bootstrap "
+        "of dates; Diebold--Mariano test on the cross-pair mean loss differential, Holm across "
+        "markets and horizons within each hypothesis. Below 1: the model forecasts better.",
+        "tab:forecast",
+        "lllrlrlrl",
+    )
+
+
+def forecast_simulation_table(summary: pl.DataFrame, path: Path) -> Path:
+    """Forecast models on simulated rough volatility: QLIKE relative to HAR on log RV."""
+    models = ["ar_log", "rough_gjr", "rough_rolling", "rough_dev"]
+    rows = []
+    if summary.height:
+        wide = (
+            summary.filter(pl.col("model").is_in(models))
+            .pivot(on="model", index=["true_h", "noise", "horizon"], values="ratio_mean")
+            .sort("true_h", "noise", "horizon")
+        )
+        for r in wide.iter_rows(named=True):
+            rows.append(
+                [tex(r["true_h"], 2), tex(r["noise"], 1), str(r["horizon"])]
+                + [tex(r.get(m)) for m in models]
+            )
+    return write_table(
+        path,
+        ["True $H$", "Noise sd", "$h$"] + [FORECAST_NAMES[m] for m in models],
+        rows,
+        "Forecasting models on simulated rough volatility (log RV = day-averaged fBm plus "
+        "Gaussian noise): mean QLIKE relative to HAR on log RV across replications. The exact "
+        "predictor ($H$ estimated, or the true $H$) should win, more at long horizons.",
+        "tab:forecast-sim",
+        "rrrrrrr",
+    )

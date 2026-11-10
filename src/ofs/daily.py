@@ -5,7 +5,9 @@
    late or a failed download is picked up the next day (spec §11.4);
 2. validation, reduction, update of the daily statistics; once a week, the files Binance
    re-published over the last ``recheck_days`` are applied (spec §6.4);
-3. rolling 24-month estimates (the confirmatory tests stay frozen);
+3. rolling 24-month estimates (the confirmatory tests stay frozen), then the live
+   forecasts of daily volatility and volume for the next 1, 5 and 22 days and the live
+   track record of past forecasts (``ofs.forecast.live``);
 4. Healthchecks.io ping on success, alert otherwise; disk alert above 80 %.
 
 Exit codes: 0 done, 75 files not yet published (retry later), 1 failure.
@@ -120,6 +122,17 @@ def run_daily(
             except ProtocolError as exc:
                 log.warning("rolling_estimates_skipped", reason=str(exc))
                 rolling_ok = False
+        live_ok = None
+        if rolling_ok and project.estimation.forecast is not None:
+            from ofs.forecast.live import forecast_live, score_live
+
+            try:  # a failure is reported below; the data of the day are already safe
+                forecast_live(project, day, markets)
+                score_live(project, day)
+                live_ok = True
+            except Exception as exc:
+                log.error("live_forecasts_failed", error=repr(exc)[:500])
+                live_ok = False
         disk = disk_fraction(layout.root)
         problems = []
         if summary.failed:
@@ -130,6 +143,8 @@ def run_daily(
             problems.append(f"{missing} files missing at {pcfg.daily.retry_until_hour_utc}:00 UTC")
         if disk > pcfg.monitoring.disk_alert_fraction:
             problems.append(f"disk {disk:.0%} used")
+        if live_ok is False:
+            problems.append("live forecasts failed")
         write_status(
             layout.status_file,
             last_run=now.isoformat(),
@@ -138,6 +153,7 @@ def run_daily(
             counts=dict(summary.counts),
             blocked=summary.blocked[:50],
             rolling_estimates=rolling_ok,
+            live_forecasts=live_ok,
             disk_used_fraction=round(disk, 4),
             last_error="; ".join(problems) or None,
         )

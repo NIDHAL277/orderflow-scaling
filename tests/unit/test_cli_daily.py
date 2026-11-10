@@ -139,7 +139,7 @@ def test_cli_test_and_report(project: Project) -> None:
     res = _cli(project, "report", "--sample", "confirmation", "--profile", "quick", "--no-pdf")
     assert res.exit_code == 0, res.output
     figures = sorted(p.name for p in (project.root / "paper" / "figures").glob("*.pdf"))
-    assert len(figures) == 8 and (project.root / "paper" / "tables" / "tests.tex").exists()
+    assert len(figures) == 9 and (project.root / "paper" / "tables" / "tests.tex").exists()
     assert "\\resultHOne" in (project.root / "paper" / "tables" / "macros.tex").read_text(
         encoding="utf-8"
     )
@@ -232,7 +232,28 @@ def test_daily_waits_then_marks_missing(project: Project, monkeypatch: pytest.Mo
     bbb = man.filter(pl.col("symbol") == "BBBUSDT")
     assert bbb.height == 2 * 7 and set(bbb["status"]) == {"missing"}  # 2 kinds x 7 days
     assert "missing" in read_status(layout.status_file)["last_error"]
+    assert read_status(layout.status_file)["live_forecasts"] is True  # ran (no history yet)
     assert daily_mod.finalize_pending(layout, DAY) == 0
+
+
+def test_daily_reports_failed_live_forecasts(
+    project: Project, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    layout = DataLayout(project.data_dir)
+    monkeypatch.setattr("ofs.pipeline.download", _fake_download(layout, {}))
+    monkeypatch.setattr(daily_mod, "disk_fraction", lambda p: 0.1)
+    monkeypatch.setattr(daily_mod, "ping", lambda url, kind, msg="": True)
+
+    def broken(*args: object, **kwargs: object) -> None:
+        raise RuntimeError("model failure")
+
+    monkeypatch.setattr("ofs.forecast.live.forecast_live", broken)
+    now = dt.datetime.combine(DAY + dt.timedelta(days=1), dt.time(2, 30), tzinfo=dt.UTC)
+    code = daily_mod.run_daily(project, now=now, markets=("spot",), estimate=True)
+    assert code == daily_mod.EXIT_FAIL
+    status = read_status(layout.status_file)
+    assert status["live_forecasts"] is False and "live forecasts failed" in status["last_error"]
+    assert status["rolling_estimates"] is True  # the data and the estimates of the day are safe
 
 
 def test_daily_replays_a_file_published_late(

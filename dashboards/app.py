@@ -1,4 +1,4 @@
-"""Streamlit dashboard (module M9): tests, asset sheet, pipeline health, simulation.
+"""Streamlit dashboard (module M9): tests, asset sheet, forecasts, health, simulation.
 
     streamlit run dashboards/app.py         # reads $OFS_DATA_DIR or ./data
 
@@ -18,6 +18,7 @@ st.navigation(
     [
         st.Page("pages/tests.py", title="Tests H1-H5", icon="🧪", default=True),
         st.Page("pages/asset.py", title="Asset sheet", icon="🪙"),
+        st.Page("pages/forecast.py", title="Forecasting", icon="🔮"),
         st.Page("pages/health.py", title="Pipeline health", icon="🩺"),
         st.Page("pages/simulation.py", title="Simulation", icon="🎲"),
     ]

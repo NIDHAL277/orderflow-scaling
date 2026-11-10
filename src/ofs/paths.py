@@ -126,6 +126,24 @@ class DataLayout:
         """Specification curve of ``sample``."""
         return self.root / "tests" / f"robustness_{sample}.parquet"
 
+    # ------------------------------------------------------------ forecasting
+    @property
+    def forecast_dir(self) -> Path:
+        """Forecasting extension outputs (``ofs forecast``)."""
+        return self.root / "forecast"
+
+    def forecasts_file(self, sample: str) -> Path:
+        """Every out-of-sample forecast of ``sample`` with its realised target."""
+        return self.forecast_dir / f"forecasts_{sample}.parquet"
+
+    def forecast_eval_file(self, sample: str) -> Path:
+        """Per-pair evaluation (mean losses, DM tests, model confidence set)."""
+        return self.forecast_dir / f"evaluation_{sample}.parquet"
+
+    def forecast_tests_file(self, sample: str) -> Path:
+        """Pooled forecast hypotheses F1-F3 of ``sample``."""
+        return self.forecast_dir / f"tests_{sample}.parquet"
+
     @property
     def simulation_dir(self) -> Path:
         """Simulation study outputs and checkpoints."""

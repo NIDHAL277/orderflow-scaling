@@ -19,6 +19,8 @@
 \providecommand{\nPerps}{59}
 \providecommand{\pairDays}{pending}
 \providecommand{\sdInflation}{1}
+\providecommand{\resultFOne}{pending}
+\providecommand{\resultFTwo}{pending}
 
 \title{One Exponent to Rule Them All? An Asset-by-Asset Test of the Scaling Laws of
 Order Flow, Volume, Volatility and Market Impact on Crypto Markets}
@@ -41,7 +43,10 @@ microstructure noise, and test the three relations jointly in the cross-section 
 errors-in-variables regressions and a bootstrap synchronized across assets, under a
 pre-registered protocol with a frozen confirmation sample. Volume relation: \resultHOne;
 volatility relation: \resultHTwo; impact relation (exploratory, proxy measure):
-\resultHThree.
+\resultHThree. Out of sample, an exact rough-volatility predictor is compared with HAR
+benchmarks for daily volatility and volume, and the roughness implied by order flow with
+the roughness measured on volatility (QLIKE ratios, spot, 22 days: \resultFOne{} and
+\resultFTwo).
 \end{abstract}
 
 \section{Introduction}
@@ -315,6 +320,52 @@ predicted line.}
 perpetual of the same crypto.}
 \figureif{fig8_specification_curve.pdf}{0.95}{Specification curve: every variant, sorted,
 with its interval; not corrected for multiplicity.}
+
+\section{Forecasting volatility and volume}
+\label{sec:forecast}
+The relations above are statements about exponents. A practical reading is predictive: if
+volatility is rough with $H_\sigma = 2\Hz - \tfrac32$, a predictor that uses this roughness
+should forecast daily volatility at least as well as the standard benchmarks, and the
+roughness implied by order flow should forecast as well as the roughness measured on
+volatility itself. We test both out of sample (pre-registration \S10); the evaluation is
+statistical only, with no trading rule.
+
+\paragraph{Design.} For each pair and market, at the end of every day $t$ of the evaluated
+period, each model forecasts the average of the daily 5-minute realised variance (or of
+the traded quote volume) over the next $h \in \{1, 5, 22\}$ days \citep{corsi2009}, from a
+500-day window of the five-year daily history ending at $t$. Benchmarks are the random
+walk, a direct AR(5) on logs and the HAR model on levels and on logs
+\citep{corsi2009,abd2007}; HAR on logs is the reference. The rough models forecast the log
+series by the Gaussian conditional expectation under the model of the Whittle estimator of
+\citet{fukasawa2022}: the day average of a fractional Brownian motion plus white
+measurement noise. The increments of day-averaged fBm have autocovariance
+$\tfrac12\delta^4\Phi(k)$ with $\Phi(x) = |x|^{2H+2}/((2H+1)(2H+2))$, so the predictor is one
+Toeplitz system per horizon, and its error variance gives the lognormal correction to
+levels. Its parameters are estimated on the window (\emph{rough, $H$ estimated}), or $H$ is
+fixed at the development estimate of $H_\sigma$, or at the order-flow value $2\hat\Hz - \tfrac32$.
+The continuous-time kernel of \citet[\S5]{gatheral2018}, derived from \citet{nuzman2000},
+is reported as published: on daily-sampled fBm it lost 13\,\% of one-step mean squared
+error to the exact predictor in our simulations, because daily realised variance is an
+average carrying measurement noise.
+
+\paragraph{Evaluation.} Losses are QLIKE and the squared error on the level of the target,
+which rank forecasts consistently with a noisy but unbiased volatility proxy
+\citep{patton2011}. Per pair we report Diebold--Mariano tests against HAR
+\citep{diebold1995,hln1997} with Newey--West variances \citep{neweywest1987} and the model
+confidence set \citep{hansen2011}. The hypotheses pool pairs: the loss differential of each
+pair is scaled by the reference's mean loss, averaged across pairs each day, and tested
+with the same Diebold--Mariano statistic; a stationary bootstrap of dates gives the
+interval of the average loss ratio. F1 compares the rough predictor with HAR, F2 the
+order-flow $H$ with the volatility $H$ (the scaling law passes if they are equivalent within
+2\,\%), F3 repeats F1 for volume. On simulated rough volatility ($H = 0.1$, measurement
+noise), the rough predictor lowers QLIKE by 1\,\%, 2\,\% and 8.5\,\% at 1, 5 and 22 days
+against HAR (table~\ref{tab:forecast-sim}). Results: F1 \resultFOne; F2 \resultFTwo{}
+(spot, 22 days).
+\tableif{forecast.tex}
+\tableif{forecast_sim.tex}
+\figureif{fig9_forecast_ratios.pdf}{0.95}{Forecasting: mean QLIKE of the model relative to
+the reference, pooled across pairs, with 95\,\% bootstrap intervals (blue: spot, orange:
+perpetual).}
 
 \section{Limitations}
 The impact exponent rests on a proxy: runs of same-side trades mix independent traders, and

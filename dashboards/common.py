@@ -13,6 +13,29 @@ from ofs.store import Store
 
 SPOT, PERP, INK, INK_2, BAND = "#2a78d6", "#eb6834", "#0b0b0b", "#52514e", "#f0efec"
 MARKET_SCALE = alt.Scale(domain=["spot", "um"], range=[SPOT, PERP])
+# forecast models: fixed domain, so that a model keeps its colour whatever is filtered;
+# hues distinct from the market colours above (benchmark in ink, simple models in greys)
+MODEL_ORDER = [
+    "har_log",
+    "rough_rolling",
+    "rough_theory",
+    "rough_dev",
+    "rough_gjr",
+    "har",
+    "ar_log",
+    "rw",
+]
+MODEL_SCALE = alt.Scale(
+    domain=MODEL_ORDER,
+    range=["#0b0b0b", "#0f766e", "#b45309", "#6d28d9", "#be185d", "#8a8985", "#b8b6b0", "#d9d7d2"],
+)
+FORECAST_ICON = {
+    "better": "✅ better",
+    "worse": "❌ worse",
+    "equivalent": "⚖️ equivalent",
+    "undecided": "… undecided",
+    "insufficient_data": "⏳ insufficient data",
+}
 DECISION_ICON = {
     "compatible": "✅ compatible",
     "rejected": "❌ rejected",

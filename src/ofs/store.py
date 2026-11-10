@@ -75,6 +75,65 @@ class Store:
         """Summary of the simulation study ``profile``."""
         return self._read(self.layout.simulation_dir / f"summary_{profile}.parquet")
 
+    # ------------------------------------------------------------- forecasting
+    def forecasts(self, sample: str) -> pl.DataFrame:
+        """Every out-of-sample forecast of ``sample`` (``ofs forecast``)."""
+        return self._read(self.layout.forecasts_file(sample))
+
+    def forecast_evaluation(self, sample: str) -> pl.DataFrame:
+        """Per-pair forecast evaluation of ``sample``."""
+        return self._read(self.layout.forecast_eval_file(sample))
+
+    def forecast_tests(self, sample: str | None = None) -> pl.DataFrame:
+        """Pooled forecast hypotheses F1-F3 (both samples when None)."""
+        samples = [sample] if sample else ["development", "confirmation"]
+        frames = [
+            f for f in (self._read(self.layout.forecast_tests_file(s)) for s in samples) if f.height
+        ]
+        return pl.concat(frames, how="diagonal_relaxed") if frames else pl.DataFrame()
+
+    def forecast_live(self) -> pl.DataFrame:
+        """Live forecasts of the most recent origin (daily run)."""
+        folder = self.layout.forecast_dir / "live"
+        files = sorted(folder.glob("*.parquet")) if folder.exists() else []
+        return self._read(files[-1]) if files else pl.DataFrame()
+
+    def forecast_live_scored(self) -> pl.DataFrame:
+        """Every live forecast with its realised target once complete (track record)."""
+        return self._read(self.layout.forecast_dir / "live_scored.parquet")
+
+    def forecast_simulation(self) -> pl.DataFrame:
+        """Forecast models on simulated rough volatility (``ofs simulate forecast``)."""
+        return self._read(self.layout.simulation_dir / "forecast_study.parquet")
+
+    def forecasts_for(
+        self,
+        symbol: str,
+        sample: str,
+        *,
+        market: str = "spot",
+        target: str = "volatility",
+        horizon: int = 1,
+        models: list[str] | None = None,
+    ) -> pl.DataFrame:
+        """Forecast and realised series of one pair (dashboard and API)."""
+        fc = self.forecasts(sample)
+        if fc.height == 0:
+            return fc
+        sql = (
+            "select origin, model, forecast, realized, qlike, hurst from fc "
+            "where symbol = $symbol and market = $market and target = $target "
+            "and horizon = $horizon"
+        )
+        params: dict[str, Any] = {
+            "symbol": symbol,
+            "market": market,
+            "target": target,
+            "horizon": horizon,
+        }
+        out = self.query(sql + " order by origin, model", params, fc=fc)
+        return out.filter(pl.col("model").is_in(models)) if models else out
+
     # ------------------------------------------------------------- queries
     def query(
         self, sql: str, params: dict[str, Any] | None = None, **tables: pl.DataFrame

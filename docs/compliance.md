@@ -33,8 +33,8 @@ decision or an action of the project owner is needed.
 | M5 estimators | pure `estimate(stats, config) -> Estimate(value, diagnostics)`; diagnostics (fit, residuals, ζ(q) linearity, τ range) | done — `ofs.estimators.base`, `tests/unit/test_estimators.py` |
 | M6 inference | size of the 1 % test in [0.5 %, 2 %] on synthetic universes | done — 0.88-1.32 % over 2 000 universes |
 | M7 report | 7 figures and the tables in `paper/` | done — `make report`; a 10-slide deck from the same figures |
-| M8 API | `/health`, `/assets`, `/estimates/{symbol}`, `/tests`, OpenAPI | done — `tests/unit/test_api_store.py` |
-| M9 dashboard | 4 pages: tests, asset sheet, health, simulation | done — `tests/unit/test_dashboard.py` |
+| M8 API | `/health`, `/assets`, `/estimates/{symbol}`, `/tests`, OpenAPI | done — `tests/unit/test_api_store.py`; plus `/forecast/tests`, `/forecast/evaluation`, `/forecasts/{symbol}` |
+| M9 dashboard | 4 pages: tests, asset sheet, health, simulation | done — `tests/unit/test_dashboard.py`; plus a *Forecasting* page |
 | M10 CLI | `ofs ingest/reduce/estimate/test/report/daily`, non-zero exit on failure | done — `tests/unit/test_cli_daily.py` |
 
 ## Protocol (§9)
@@ -78,3 +78,11 @@ decision or an action of the project owner is needed.
 | Report 15-25 pages for arXiv (q-fin.TR) / SSRN | skeleton and generated figures; text of results after the tests |
 | README: one-sentence result, key figure, reproduction command | reproduction done; result after the tests |
 | Presentation: 10 slides, 10 minutes | done — `paper/slides.tex`, built by `make report` |
+
+## Beyond the specification
+
+| Item | State |
+|---|---|
+| Forecasting extension (owner's request): daily volatility and volume, 1/5/22 days, rough predictors against HAR, F1-F3 pre-registered (§10) | done — `ofs.forecast`, `ofs forecast`, `ofs simulate forecast`, [forecasting](forecasting.md), [ADR 0013](adr/0013-forecasting-extension.md); no trading rule or P&L, which §4 excludes |
+| Extension "change-point detection on H" (§4, after v1) | not started — the forecasting docs list regime changes as a limitation |
+| Extensions kdb+/q, other exchanges, L2 collector (§4, after v1) | not started |

@@ -70,3 +70,30 @@ split:
   development: {from: 2024-11-01, to: 2025-10-31}
   confirmation: {from: 2025-11-01, to: 2026-10-31}
   history: {from: 2021-11-01, to: 2026-10-31}     # daily volatility only (spec §4, up to 5 years)
+
+# Extension F, forecasting (docs/adr/0013, pre-registration §10). Out-of-sample forecasts of
+# the average daily realised variance and traded volume over the next h days, from the
+# 5-year daily history. Statistical evaluation only: no trading rule, no P&L (spec §4).
+forecast:
+  development_from: 2023-05-01     # development evaluation: 2023-05-01 .. split.development.to
+  targets:
+    volatility:
+      column: rv_5m
+      models: [rw, ar_log, har, har_log, rough_gjr, rough_rolling, rough_dev, rough_theory]
+    volume:
+      column: quote_volume
+      models: [rw, ar_log, har, har_log, rough_gjr, rough_rolling]
+  benchmark: har_log
+  horizons_days: [1, 5, 22]
+  window_days: 500                 # rolling estimation window (days)
+  min_window_obs: 400
+  refit_every_days: 5              # parameters of the rough predictors (regressions: every day)
+  level_correction: lognormal      # log forecast -> level: exp(mu + var/2), each model's own variance
+  calibration_origins: 250         # in-window origins of the smearing factor (level_correction: smearing)
+  ar_lags: 5
+  har_lags: [1, 5, 22]
+  rough_h_bounds: [0.01, 0.49]     # rough_theory = 2 H0 - 3/2 is floored at 0.01
+  loss: qlike                      # primary loss; the squared error is reported
+  equivalence_margin_loss: 0.02    # relative change of the mean loss read as "no difference"
+  bootstrap: {mean_block_days: 22, replications: 999}
+  mcs_alpha: 0.10

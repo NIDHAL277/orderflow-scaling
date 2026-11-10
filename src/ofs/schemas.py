@@ -261,6 +261,18 @@ RV = TableSchema(
     checks={"rv_5m": [pa.Check.ge(0)]},
 )
 
+# 5-year daily history from monthly 1-minute klines: the RV columns plus the traded volume
+# (quote asset, USD for USDT pairs) and trade count used by the forecasting extension
+RV_HISTORY = TableSchema(
+    "rv_history",
+    {**RV.columns, "quote_volume": _F, "n_trades": _I},
+    checks={
+        "rv_5m": [pa.Check.ge(0)],
+        "quote_volume": [pa.Check.ge(0)],
+        "n_trades": [pa.Check.ge(0)],
+    },
+)
+
 LOCAL_VAR = TableSchema(
     "local_var",
     _keyed({"slot": _I, "rv_15m": _F, "n_returns": _I}),
@@ -375,6 +387,104 @@ TESTS = TableSchema(
             pa.Check.isin(
                 ["rejected", "compatible", "non_tranchee", "descriptive", "insufficient_data"]
             )
+        ],
+    },
+)
+
+_FORECAST_MODELS = [
+    "rw",
+    "ar_log",
+    "har",
+    "har_log",
+    "rough_gjr",
+    "rough_rolling",
+    "rough_dev",
+    "rough_theory",
+]
+
+FORECASTS = TableSchema(
+    "forecasts",
+    {
+        "symbol": _S,
+        "market": _S,
+        "target": _S,
+        "sample": _S,
+        "model": _S,
+        "horizon": _I,
+        "origin": pl.Date(),
+        "forecast": _F,
+        "realized": _F,
+        "qlike": _F,
+        "mse": _F,
+        "hurst": _F,
+        "noise_ratio": _F,
+        "look_ahead": _B,
+    },
+    nullable=frozenset({"realized", "qlike", "mse", "hurst", "noise_ratio"}),
+    checks={
+        "target": [pa.Check.isin(["volatility", "volume"])],
+        "market": [pa.Check.isin(["spot", "um"])],
+        "model": [pa.Check.isin(_FORECAST_MODELS)],
+        "horizon": [pa.Check.ge(1)],
+        "forecast": [pa.Check.gt(0)],
+    },
+)
+
+FORECAST_EVAL = TableSchema(
+    "forecast_evaluation",
+    {
+        "symbol": _S,
+        "market": _S,
+        "target": _S,
+        "sample": _S,
+        "model": _S,
+        "horizon": _I,
+        "n": _I,
+        "mean_qlike": _F,
+        "mean_mse": _F,
+        "ratio_qlike": _F,
+        "ratio_mse": _F,
+        "dm_stat": _F,
+        "dm_p": _F,
+        "mcs_p": _F,
+        "in_mcs": _B,
+        "look_ahead": _B,
+    },
+    nullable=frozenset(
+        {"mean_qlike", "mean_mse", "ratio_qlike", "ratio_mse", "dm_stat", "dm_p", "mcs_p"}
+    ),
+    checks={"model": [pa.Check.isin(_FORECAST_MODELS)]},
+)
+
+FORECAST_TESTS = TableSchema(
+    "forecast_tests",
+    {
+        "sample": _S,
+        "hypothesis": _S,
+        "target": _S,
+        "market": _S,
+        "horizon": _I,
+        "model": _S,
+        "reference": _S,
+        "loss": _S,
+        "n_pairs": _I,
+        "n_dates": _I,
+        "ratio": _F,
+        "ci_low": _F,
+        "ci_high": _F,
+        "dm_stat": _F,
+        "p_value": _F,
+        "p_holm": _F,
+        "decision": _S,
+        "look_ahead": _B,
+        "code_version": _S,
+        "config_version": _S,
+        "computed_at": _UTC,
+    },
+    nullable=frozenset({"ratio", "ci_low", "ci_high", "dm_stat", "p_value", "p_holm"}),
+    checks={
+        "decision": [
+            pa.Check.isin(["better", "worse", "equivalent", "undecided", "insufficient_data"])
         ],
     },
 )

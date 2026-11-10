@@ -28,7 +28,12 @@ docker compose exec pipeline ofs status
    Each run also replays the six days before (late files, failed downloads).
 2. Validation, reduction, update of the daily statistics. After Sunday's data, the files
    Binance re-published over the last 30 days are applied (`ofs recheck`).
-3. Rolling 24-month estimates (confirmatory tests stay frozen on the frozen sample).
+3. Rolling 24-month estimates (confirmatory tests stay frozen on the frozen sample), then
+   the live forecasts of every pair for the next 1, 5 and 22 days
+   (`data/forecast/live/{day}.parquet`) and the live track record of past forecasts whose
+   target is now complete (`data/forecast/live_scored.parquet`). Both need the protocol to
+   allow the rolling estimates; a failure sets `live_forecasts: false` in the status and
+   sends a fail ping, the data of the day being already saved.
 4. Healthchecks.io ping on success, fail ping otherwise (and at 12:xx UTC for files still
    absent, which become "missing").
 5. Sunday 04:00: backup of `daily_stats`, `estimates`, `tests` to R2.
@@ -72,6 +77,7 @@ O1 requires none of them.
 | Binance format change | M2 schema failure | alert, fix the loader, add a regression test, replay |
 | Disk full | alert at 80 % | purge `data/raw/`, check deletion after reduction |
 | Interrupted run (kill, reboot) | `*.tmp-*` / `*.part` files | `ofs clean-temp --dry-run`, then `ofs clean-temp`; rerun the command: done days are skipped |
+| Live forecasts failed | status `live_forecasts: false`, fail ping | read the `live_forecasts_failed` event in the log; the next daily run retries; a missing day of forecasts stays missing (forecasts are never made after the fact) |
 | Regression after deployment | tests or dashboard | `OFS_IMAGE_TAG=<previous> docker compose up -d` |
 
 Every real incident gets a three-line note in `docs/incidents/`: cause, fix, test added.

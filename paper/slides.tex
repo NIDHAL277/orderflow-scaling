@@ -11,6 +11,8 @@
 \newcommand{\Hz}{H_0}
 \newcommand{\fig}[2]{\IfFileExists{figures/#1}{\includegraphics[height=#2\textheight]{#1}}{\fbox{\parbox{0.6\linewidth}{\centering\small figure \texttt{#1}: built by \texttt{make report}}}}}
 \IfFileExists{tables/macros.tex}{\input{tables/macros.tex}}{\newcommand{\resultHOne}{pending}\newcommand{\resultHTwo}{pending}\newcommand{\resultHThree}{pending}}
+\providecommand{\resultFOne}{pending}
+\providecommand{\resultFTwo}{pending}
 
 \title{One exponent to rule them all?}
 \subtitle{An asset-by-asset test of the scaling laws of order flow, volume, volatility and
@@ -89,14 +91,15 @@ impact on crypto markets}
   \centering\fig{fig1_h0_by_asset.pdf}{0.78}
 \end{frame}
 
-\begin{frame}{H1 --- volume: $H_{\mathrm{vol}} = \Hz - \tfrac12$}
-  \centering\fig{fig2_h1_hvol.pdf}{0.70}\par
-  Decision (spot, confirmation sample): \alert{\resultHOne}
-\end{frame}
-
-\begin{frame}{H2 --- volatility: $H_\sigma = 2\Hz - \tfrac32$}
-  \centering\fig{fig3_h2_hsigma.pdf}{0.70}\par
-  Decision (spot, confirmation sample): \alert{\resultHTwo}
+\begin{frame}{H1 volume $H_{\mathrm{vol}} = \Hz - \tfrac12$ \quad H2 volatility $H_\sigma = 2\Hz - \tfrac32$}
+  \begin{columns}[T]
+    \column{0.49\textwidth}
+    \centering\fig{fig2_h1_hvol.pdf}{0.55}\par
+    \small H1 (spot, confirmation): \alert{\resultHOne}
+    \column{0.49\textwidth}
+    \centering\fig{fig3_h2_hsigma.pdf}{0.55}\par
+    \small H2 (spot, confirmation): \alert{\resultHTwo}
+  \end{columns}
 \end{frame}
 
 \begin{frame}{H3 --- impact (exploratory), spot vs perpetual, robustness}
@@ -108,6 +111,16 @@ impact on crypto markets}
     \centering\fig{fig8_specification_curve.pdf}{0.55}\par
     \small every variant, sorted, with its CI (not corrected)
   \end{columns}
+\end{frame}
+
+\begin{frame}{Does roughness forecast? (extension F)}
+\begin{itemize}
+  \item Out-of-sample forecasts of daily RV and volume, 1, 5, 22 days, 5-year history
+  \item Exact rough predictor: Gaussian conditioning under day-averaged fBm + noise
+  \item F1 rough vs HAR: \resultFOne \quad F2 order-flow $H$ vs volatility $H$: \resultFTwo
+  \item Simulated rough volatility: $-8.5\,\%$ QLIKE vs HAR at 22 days; the published kernel does not beat HAR
+\end{itemize}
+\IfFileExists{figures/fig9_forecast_ratios.pdf}{\includegraphics[width=0.9\linewidth]{fig9_forecast_ratios.pdf}}{}
 \end{frame}
 
 \begin{frame}{Take-aways and reproducibility}

@@ -68,10 +68,17 @@ estimate: estimate-dev ## Both samples (confirmation requires the git tag config
 test-hyp: ## H1-H5, negative controls, power, specification curve
 	$(OFS) test --sample confirmation
 
+forecast: ## Forecasting extension F: development (prereg-v1), then confirmation (config-frozen)
+	$(OFS) forecast --sample development --jobs $(JOBS)
+	$(OFS) forecast --sample confirmation --jobs $(JOBS)
+
+sim-forecast: ## Forecast models on simulated rough volatility (QLIKE relative to HAR)
+	$(OFS) simulate forecast --reps 10 --jobs $(JOBS)
+
 report: ## Figures, LaTeX tables and paper/main.pdf
 	$(OFS) report --sample confirmation --profile $(PROFILE)
 
-all: data sim estimate test-hyp report ## Everything, from a clean clone
+all: data sim estimate test-hyp sim-forecast forecast report ## Everything, from a clean clone
 
 docs: ## Documentation site (MkDocs)
 	$(UV) run --frozen mkdocs build --strict

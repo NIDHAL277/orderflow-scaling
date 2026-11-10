@@ -537,6 +537,90 @@ def simulate_check() -> None:
         raise typer.Exit(code=1)
 
 
+@simulate_app.command("forecast")
+def simulate_forecast(
+    ctx: typer.Context,
+    reps: int = 10,
+    hurst: Annotated[list[float] | None, typer.Option("--hurst")] = None,
+    noise: Annotated[list[float] | None, typer.Option("--noise")] = None,
+    jobs: int = 1,
+) -> None:
+    """Forecast models on simulated rough volatility: QLIKE relative to HAR (extension F)."""
+    from ofs.forecast.run import forecast_config, make_spec
+    from ofs.forecast.simulate import forecast_study
+    from ofs.io import write_parquet_atomic
+    from ofs.paths import DataLayout
+
+    project = _project(ctx)
+    hs = project.estimation.hsigma
+    raw, summary = forecast_study(
+        make_spec(forecast_config(project)),
+        h_values=tuple(hurst) if hurst else (0.05, 0.1, 0.2),
+        noise_values=tuple(noise) if noise else (0.0, 0.3),
+        reps=reps,
+        seed=project.estimation.seed,
+        lags=hs.daily.lags_days.integers().tolist(),
+        qs=hs.q_grid,
+        jobs=jobs,
+    )
+    out = DataLayout(project.data_dir).simulation_dir
+    write_parquet_atomic(raw, out / "forecast_study_raw.parquet")
+    write_parquet_atomic(summary, out / "forecast_study.parquet")
+    typer.echo(
+        summary.filter(summary["model"].is_in(["har_log", "rough_gjr", "rough_rolling"])).select(
+            "true_h", "noise", "horizon", "model", "ratio_mean", "ratio_sd", "share_better"
+        )
+    )
+
+
+class ForecastSampleChoice(StrEnum):
+    """Evaluated period of the forecasting extension."""
+
+    development = "development"
+    confirmation = "confirmation"
+
+
+class TargetChoice(StrEnum):
+    """Forecast target: daily realised variance, traded volume or both."""
+
+    volatility = "volatility"
+    volume = "volume"
+    all = "all"
+
+
+@app.command()
+@writes_data
+def forecast(
+    ctx: typer.Context,
+    sample: ForecastSampleChoice = ForecastSampleChoice.development,
+    target: TargetChoice = TargetChoice.all,
+    market: MarketChoice = MarketChoice.all,
+    symbols: Annotated[list[str] | None, typer.Option("--symbol")] = None,
+    jobs: int = 1,
+) -> None:
+    """Out-of-sample forecasts of daily volatility and volume, evaluation, tests F1-F3."""
+    from ofs.forecast.run import TARGETS, run_forecasts
+    from ofs.protocol import ProtocolError, check_estimation_allowed
+
+    project = _project(ctx)
+    try:
+        check_estimation_allowed(project, sample.value)
+    except ProtocolError as exc:
+        typer.echo(f"protocol: {exc}", err=True)
+        raise typer.Exit(code=2) from exc
+    targets = TARGETS if target == TargetChoice.all else (target.value,)
+    fc, ev, tests = run_forecasts(
+        project, sample.value, _markets(market), targets=targets, symbols=symbols, jobs=jobs
+    )
+    typer.echo(f"{fc.height} forecasts, {ev.height} evaluation rows")
+    for row in tests.iter_rows(named=True):
+        typer.echo(
+            f"{row['hypothesis']:<3} {row['target']:<10} {row['market']:<5} h={row['horizon']:<3} "
+            f"{row['model']} / {row['reference']}: ratio={row['ratio']} "
+            f"p_holm={row['p_holm']} -> {row['decision']}"
+        )
+
+
 # ---------------------------------------------------------------- outputs
 @app.command()
 def report(

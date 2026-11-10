@@ -56,6 +56,9 @@ def build_report(
     figures.forest_residuals(res, margin, fig_dir / "fig6_forest_residuals.pdf")
     figures.spot_vs_perp(est, refs, margin, fig_dir / "fig7_spot_vs_perp.pdf")
     figures.specification_curve(rob, margin, fig_dir / "fig8_specification_curve.pdf")
+    # forecasting extension: the confirmation tests when the report is on that sample
+    fc_tests = store.forecast_tests("confirmation" if sample == "confirmation" else "development")
+    figures.forecast_ratios(fc_tests, fig_dir / "fig9_forecast_ratios.pdf")
 
     tables.tests_table(tests, tab_dir / "tests.tex")
     tables.simulation_table(sim, tab_dir / "simulation.tex")
@@ -71,7 +74,9 @@ def build_report(
     tables.universe_table(pairs, tab_dir / "universe.tex")
     quality = store.quality()
     tables.quality_table(quality, tab_dir / "quality.tex")
-    _write_macros(tests, tab_dir / "macros.tex", project, quality)
+    tables.forecast_table(fc_tests, tab_dir / "forecast.tex")
+    tables.forecast_simulation_table(store.forecast_simulation(), tab_dir / "forecast_sim.tex")
+    _write_macros(tests, tab_dir / "macros.tex", project, quality, fc_tests)
 
     if compile_pdf:
         compile_latex(paper)
@@ -84,6 +89,7 @@ def _write_macros(
     path: Path,
     project: Project | None = None,
     quality: pl.DataFrame | None = None,
+    forecast: pl.DataFrame | None = None,
 ) -> None:
     r"""Write ``\resultHOne`` etc.: the one-line results of the abstract and slides."""
     names = {"H1": "One", "H2": "Two", "H3": "Three"}
@@ -113,6 +119,18 @@ def _write_macros(
     if quality is not None and quality.height:
         counts["pairDays"] = f"{int(quality['reduced'].sum()):,}".replace(",", r"\,")
     lines += [rf"\newcommand{{\{name}}}{{{value}}}" for name, value in counts.items()]
+    # forecasting: F1 and F2 on spot at the monthly horizon (ratio and decision)
+    for code, name in (("F1", "One"), ("F2", "Two")):
+        text = "pending"
+        if forecast is not None and forecast.height:
+            row = forecast.filter(
+                (pl.col("hypothesis") == code)
+                & (pl.col("market") == "spot")
+                & (pl.col("horizon") == forecast["horizon"].max())
+            )
+            if row.height and row["ratio"][0] is not None:
+                text = f"{row['ratio'][0]:.3f} ({row['decision'][0].replace('_', ' ')})"
+        lines.append(rf"\newcommand{{\resultF{name}}}{{{text}}}")
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 

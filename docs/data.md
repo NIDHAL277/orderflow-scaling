@@ -11,7 +11,7 @@ format is documented in [binance-public-data](https://github.com/binance/binance
 | aggTrades spot, daily | `/data/spot/daily/aggTrades/{S}/{S}-aggTrades-{YYYY-MM-DD}.zip` | main source |
 | aggTrades USD-M, daily | `/data/futures/um/daily/aggTrades/{S}/...` | H5 (spot vs perpetual) |
 | klines 1 min | `/data/{spot,futures/um}/daily/klines/{S}/1m/...` | OHLC check |
-| klines 1 min, monthly | `/data/{spot,futures/um}/monthly/klines/{S}/1m/...` | 5-year daily RV (`ofs history`) |
+| klines 1 min, monthly | `/data/{spot,futures/um}/monthly/klines/{S}/1m/...` | 5-year daily RV, traded quote volume and trade count (`ofs history`; volatility estimates and the forecasting extension) |
 | klines 1 day, monthly | `/data/spot/monthly/klines/{S}/1d/...` | universe ranking |
 | checksums | same URL + `.CHECKSUM` | SHA-256 |
 

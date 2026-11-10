@@ -26,7 +26,7 @@ STAGE_VERSIONS: dict[str, str] = {
     "events": "1",
     "stats": "1",
     "klines_rv": "1",
-    "history_rv": "2",  # 2: days without trades left out
+    "history_rv": "3",  # 2: days without trades left out; 3: daily volume and trade count
 }
 
 

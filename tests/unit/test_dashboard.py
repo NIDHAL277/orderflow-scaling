@@ -1,4 +1,4 @@
-"""The Streamlit dashboard renders its four pages without exceptions (M9)."""
+"""The Streamlit dashboard renders its five pages without exceptions (M9)."""
 
 from __future__ import annotations
 
@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 from streamlit.testing.v1 import AppTest
+from test_forecast import small_forecast_project, write_development_estimates, write_history
 from test_inference import write_results
 
 from helpers import REPO
@@ -17,7 +18,13 @@ from ofs.paths import DataLayout
 from ofs.simulate.study import load_simulation_config, run_study
 
 APP = str(REPO / "dashboards" / "app.py")
-PAGES = ("pages/tests.py", "pages/asset.py", "pages/health.py", "pages/simulation.py")
+PAGES = (
+    "pages/tests.py",
+    "pages/asset.py",
+    "pages/forecast.py",
+    "pages/health.py",
+    "pages/simulation.py",
+)
 
 
 @pytest.fixture(scope="module")
@@ -51,6 +58,21 @@ def results_dir(tmp_path_factory: pytest.TempPathFactory) -> Path:
     run_study(
         sim, project.estimation, "ci", layout.simulation_dir, exponents=("delta",), max_cells=2
     )
+    # forecasting extension: development forecasts of two pairs and a tiny simulation check
+    from ofs.forecast.models import ForecastSpec
+    from ofs.forecast.run import run_forecasts
+    from ofs.forecast.simulate import forecast_study
+
+    small = small_forecast_project(project)
+    for i, symbol in enumerate(("AAAUSDT", "BBBUSDT")):
+        write_history(small, symbol, seed=30 + i)
+    write_development_estimates(small)
+    run_forecasts(small, "development", ("spot",))
+    spec = ForecastSpec(horizons=(1, 5), window=150, min_obs=120, calibration=60)
+    _, summary = forecast_study(
+        spec, h_values=(0.1,), noise_values=(0.3,), reps=1, n_days=420, lags=(1, 2, 4, 8)
+    )
+    write_parquet_atomic(summary, layout.simulation_dir / "forecast_study.parquet")
     return project.data_dir
 
 

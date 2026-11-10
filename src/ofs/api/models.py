@@ -50,6 +50,80 @@ class EstimateOut(BaseModel):
     computed_at: dt.datetime
 
 
+class ForecastTestOut(BaseModel):
+    """One pooled forecast comparison in ``GET /forecast/tests`` (hypotheses F1-F3)."""
+
+    sample: str
+    hypothesis: str
+    target: str = Field(description="volatility (daily RV) or volume (daily quote volume)")
+    market: str
+    horizon: int = Field(description="days: the target is the average over the next h days")
+    model: str
+    reference: str
+    loss: str
+    n_pairs: int
+    n_dates: int
+    ratio: float | None = Field(description="mean loss relative to the reference (below 1: better)")
+    ci_low: float | None
+    ci_high: float | None
+    dm_stat: float | None
+    p_value: float | None
+    p_holm: float | None
+    decision: str
+    look_ahead: bool = Field(description="H taken from the evaluated period (development only)")
+    code_version: str
+    config_version: str
+    computed_at: dt.datetime
+
+
+class ForecastEvalOut(BaseModel):
+    """Per-pair evaluation of one model in ``GET /forecast/evaluation``."""
+
+    symbol: str
+    market: str
+    target: str
+    sample: str
+    model: str
+    horizon: int
+    n: int
+    mean_qlike: float | None
+    mean_mse: float | None
+    ratio_qlike: float | None
+    ratio_mse: float | None
+    dm_stat: float | None
+    dm_p: float | None
+    mcs_p: float | None
+    in_mcs: bool
+    look_ahead: bool
+
+
+class LiveForecastOut(BaseModel):
+    """One live forecast in ``GET /forecast/live`` (made by the latest daily run)."""
+
+    symbol: str
+    market: str
+    target: str
+    model: str
+    horizon: int
+    origin: dt.date = Field(description="forecast made at the end of this UTC day")
+    forecast: float = Field(description="average daily value over the next `horizon` days")
+    annualized_vol: float | None = Field(
+        None, description="volatility target: sqrt(365 x average daily variance)"
+    )
+    hurst: float | None
+
+
+class ForecastPoint(BaseModel):
+    """One forecast in ``GET /forecasts/{symbol}``."""
+
+    origin: dt.date
+    model: str
+    forecast: float
+    realized: float | None
+    qlike: float | None
+    hurst: float | None
+
+
 class TestOut(BaseModel):
     """One cross-sectional test in ``GET /tests``."""
 

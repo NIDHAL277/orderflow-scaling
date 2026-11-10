@@ -27,9 +27,10 @@ deleted as soon as its windows and event-time statistics are written.
 | M4 Simulate | `ofs.simulate` | parameters → paths | fBm autocovariance within 2 %; Hawkes branching ratio within 0.01 |
 | M5 Estimators | `ofs.estimators` | daily statistics → `estimates` | bias < 0.02 and 95 % coverage in [93 %, 97 %] on the grid (documented where it fails) |
 | M6 Inference | `ofs.inference` | estimates + replicates → `tests` | size at 1 % in [0.5 %, 2 %] on synthetic universes |
+| F Forecast | `ofs.forecast` | 5-year daily history + development estimates → `forecast/` | no forecast reads a day after its origin; exact predictor = conditional expectation in simulation; wins under simulated rough volatility |
 | M7 Report | `ofs.report` | tables → `paper/` | `make report` |
 | M8 API | `ofs.api` | tables → JSON | read-only, rate-limited |
-| M9 Dashboard | `dashboards/app.py` | tables → web | four pages |
+| M9 Dashboard | `dashboards/app.py` | tables → web | five pages (forecasting added) |
 | M10 CLI | `ofs.cli` | — | non-zero exit code on failure |
 
 ## Principles
@@ -53,7 +54,9 @@ data/
   daily_stats/{kind}/symbol=/market=/month=/{day}__v{version}.parquet
   estimates/estimates_{sample}.parquet         + bootstrap replicates and day indices
   tests/tests_{sample}.parquet                 + residuals, controls, robustness
-  simulation/summary_{profile}.parquet         + study_{profile}, cells_{profile}_{hash}/ (checkpoints)
+  forecast/forecasts_{sample}.parquet          + evaluation_{sample}, tests_{sample} (F1-F3)
+  simulation/summary_{profile}.parquet         + study_{profile}, cells_{profile}_{hash}/ (checkpoints),
+                                               forecast_study (forecast models on simulated data)
   quality/day_states.parquet                   O1: the state of every pair-day (ofs quality)
   logs/events-YYYY-MM-DD.jsonl                 one JSON event per (stage, pair, day)
   status/pipeline_status.json

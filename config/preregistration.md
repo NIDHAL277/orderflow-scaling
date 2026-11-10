@@ -195,3 +195,46 @@ Any change after this tag (data, estimator, grid, rule) goes into a section "Dev
 from protocol" of the report, with its reason and its effect on the results. The configuration
 is frozen a second time by the tag `config-frozen` before the first estimation on the
 confirmation sample.
+
+## 10. Forecasting extension — secondary family F (added 2026-11-10, before the tag)
+
+Does roughness forecast volatility, and does the roughness implied by order flow forecast
+as well as the roughness measured on volatility? Statistical evaluation only: no trading
+rule and no P&L (spec §4). Settings: `forecast` in `config/estimation.yaml`; method:
+`docs/forecasting.md`, `docs/adr/0013-forecasting-extension.md`. This family is secondary:
+it does not enter the decision on H1–H5.
+
+* **Data and target**: daily 5-minute RV and daily traded quote volume of the 5-year history
+  (`daily_stats/rv_history`), cut at the end of the evaluated sample. Target: the average of
+  the series over the next `h ∈ {1, 5, 22}` days; one forecast per day of the evaluated
+  period, from the data up to that day only.
+* **Models**: random walk; direct AR(5) on logs; HAR on levels and on logs (benchmark
+  `har_log`); the GJR (2018) kernel; the exact Gaussian predictor of the day-averaged fBm
+  plus noise model with (i) H, noise ratio and scale by Whittle on the window
+  (`rough_rolling`), (ii) H fixed at the development estimate of H_σ (`rough_dev`), (iii) H
+  fixed at `2 Ĥ0 − 3/2` from the development estimate of H0, floored at 0.01
+  (`rough_theory`). Window 500 days (at least 400 observed), rough parameters re-estimated
+  every 5 days, regressions daily; level forecasts by each model's lognormal correction.
+* **Losses**: QLIKE (primary) and squared error, on levels.
+* **Hypotheses**, per market (spot, perpetual) and horizon, pooled across pairs:
+  * **F1** volatility, `rough_rolling` against `har_log`;
+  * **F2** volatility, `rough_theory` against `rough_dev` — the scaling law passes this test
+    if they are *equivalent*;
+  * **F3** volume, `rough_rolling` against `har_log`.
+* **Test**: Diebold–Mariano on the cross-pair mean of the loss differentials scaled by the
+  reference's mean loss per pair (Newey–West, `max(h−1, ⌊4(T/100)^{2/9}⌋)` lags,
+  Harvey–Leybourne–Newbold correction); 95 % CI of the pooled ratio by stationary bootstrap
+  of dates (mean block 22 days, 999 replications); Holm correction over the six cells
+  (2 markets × 3 horizons) of each hypothesis.
+* **Decision rule** (§6 applied to the relative loss change, margin 0.02): *better* or
+  *worse* if the Holm-corrected test rejects at 1 % and `|ratio − 1| > 0.02`; *equivalent* if
+  it does not reject and the CI of the ratio lies within `[0.98, 1.02]`; *undecided* otherwise.
+* **Samples**: development 2023-05-01 → 2025-10-31 (exploratory; `rough_dev` and
+  `rough_theory` use estimates of the same period and are flagged `look_ahead`);
+  confirmation 2025-11-01 → 2026-10-31 (confirmatory, after `config-frozen`; H from the
+  development sample only).
+* **Per pair** (descriptive): mean losses, ratio and DM test against `har_log`, model
+  confidence set at 90 % (Hansen, Lunde & Nason, T_max, stationary bootstrap of dates).
+* **Simulation check** before any real-data run (`ofs simulate forecast`): on simulated rough
+  volatility the exact predictor beats `har_log` at 22 days (exploratory run: QLIKE ratio
+  0.915 at H = 0.1 with measurement noise).

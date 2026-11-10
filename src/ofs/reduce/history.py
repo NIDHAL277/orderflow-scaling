@@ -12,7 +12,9 @@ days (MATICUSDT perpetual, 2024-09-05 to 09-10). Each monthly file is verified
 
 The output, ``daily_stats/rv_history``, holds one file per (pair, market, month, symbol):
 a rename month (MATIC -> POL) has one file per symbol, each covering the days that symbol
-traded. Estimators read it through the ``history`` sample (``ofs estimate --sample history``).
+traded. Estimators read it through the ``history`` sample (``ofs estimate --sample history``);
+the forecasting extension (``ofs forecast``) reads the RV and the daily traded volume
+(quote asset) with the trade count, kept in the same rows.
 """
 
 from __future__ import annotations
@@ -32,7 +34,7 @@ from ofs.io import read_parquets, write_parquet_atomic
 from ofs.logs import stage_event
 from ofs.paths import DataLayout
 from ofs.reduce import stats as st
-from ofs.schemas import RV
+from ofs.schemas import RV_HISTORY
 from ofs.versioning import stage_version
 
 TABLE = "daily_stats/rv_history"
@@ -97,7 +99,7 @@ def history_tasks(
 
 
 def daily_rv(klines: pl.DataFrame, return_s: int) -> pl.DataFrame:
-    """Per UTC day of a month of 1-minute klines: 5-minute RV and TSRV from the closes."""
+    """Per UTC day of a month of 1-minute klines: 5-minute RV and TSRV, volume, trades."""
     kl = klines.sort("open_time_us").with_columns(
         pl.col("open_time_us").cast(pl.Datetime("us", "UTC")).dt.date().alias("date")
     )
@@ -122,6 +124,8 @@ def daily_rv(klines: pl.DataFrame, return_s: int) -> pl.DataFrame:
                 "n_all": n_all,
                 "first_price": float(g["open"][0]),
                 "last_price": float(close[-1]),
+                "quote_volume": float(g["quote_volume"].sum()),
+                "n_trades": int(g["count"].sum()),
             }
         )
     return pl.DataFrame(rows) if rows else pl.DataFrame()
@@ -139,13 +143,13 @@ def reduce_month(project: Project, layout: DataLayout, task: DownloadTask) -> in
     frame = (
         days.with_columns(pl.lit(task.asset).alias("symbol"), pl.lit(task.market).alias("market"))
         if days.height
-        else RV.empty()
+        else RV_HISTORY.empty()
     )
     path = history_file(layout, task, history_version(project))
     for old in layout.day_files(TABLE, task.asset, task.market, task.day):
         if old != path:  # an older version of the same file
             old.unlink(missing_ok=True)
-    write_parquet_atomic(RV.validate(frame), path)
+    write_parquet_atomic(RV_HISTORY.validate(frame), path)
     raw.unlink(missing_ok=True)
     return days.height
 
@@ -192,12 +196,12 @@ def run_history(
 def load_history_rv(
     layout: DataLayout, asset: str, market: Market, days: Sequence[dt.date], version: str
 ) -> pl.DataFrame:
-    """Daily RV of ``days`` from the history table (files of the current ``version`` only)."""
+    """Daily rows of ``days`` from the history table (files of the current ``version`` only)."""
     lo, hi = min(days), max(days)
     files: list[Path] = []
     for first in month_starts(lo, hi):
         folder = layout.partition_dir(TABLE, asset, market, first)
         if folder.exists():
             files += sorted(folder.glob(f"*__v{version}.parquet"))
-    df = read_parquets(files, schema=RV.columns)
+    df = read_parquets(files, schema=RV_HISTORY.columns)
     return df.filter(pl.col("date").is_between(lo, hi)).unique("date").sort("date")

@@ -492,10 +492,12 @@ def cell_dir(out_dir: Path, profile: str, sim: SimulationConfig, cfg: Estimation
     Its name hashes both configurations and the package version, so that an edited grid or
     estimator never reuses stale cells; an interrupted run restarts where it stopped.
     """
-    # decisions taken *from* the study (estimator roles, CI calibration) and the sample
-    # split do not change a simulated cell: they are left out of the key
+    # decisions taken *from* the study (estimator roles, CI calibration), the sample
+    # split and the forecasting extension do not change a simulated cell: they are left
+    # out of the key
     decided: dict[str, Any] = {
         "split": True,
+        "forecast": True,
         "h0": {"concordance_control"},
         "hvol": {"primary_estimator", "control_estimator"},
         "hsigma": {"primary_estimator", "control_estimator"},

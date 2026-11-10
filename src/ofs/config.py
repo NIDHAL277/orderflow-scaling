@@ -235,6 +235,65 @@ class SplitConfig(FrozenModel):
         return Period.model_validate({"from": self.development.start, "to": self.confirmation.end})
 
 
+ForecastModel = Literal[
+    "rw", "ar_log", "har", "har_log", "rough_gjr", "rough_rolling", "rough_dev", "rough_theory"
+]
+
+
+class ForecastTarget(FrozenModel):
+    """One forecast target: the daily column of the history table and the competing models."""
+
+    column: Literal["rv_5m", "quote_volume"]
+    models: tuple[ForecastModel, ...]
+
+
+class ForecastBootstrap(FrozenModel):
+    """Stationary bootstrap of forecast dates (CI of pooled ratios, model confidence set)."""
+
+    mean_block_days: float = Field(22.0, gt=0)
+    replications: int = Field(999, ge=99)
+
+
+class ForecastConfig(FrozenModel):
+    """Extension F: out-of-sample forecasts of daily volatility and volume (docs/adr/0013).
+
+    Statistical evaluation only: no trading rule and no P&L (spec §4, excluded scope).
+    """
+
+    development_from: dt.date  # development evaluation runs to split.development.to
+    targets: dict[Literal["volatility", "volume"], ForecastTarget]
+    benchmark: ForecastModel = "har_log"
+    horizons_days: tuple[int, ...] = (1, 5, 22)
+    window_days: int = Field(500, ge=100)
+    min_window_obs: int = Field(400, ge=50)
+    refit_every_days: int = Field(5, ge=1)
+    calibration_origins: int = Field(250, ge=20)
+    ar_lags: int = Field(5, ge=1)
+    har_lags: tuple[int, int, int] = (1, 5, 22)
+    rough_h_bounds: tuple[float, float] = (0.01, 0.49)
+    level_correction: Literal["lognormal", "smearing"] = "lognormal"
+    loss: Literal["qlike", "mse"] = "qlike"
+    equivalence_margin_loss: float = Field(0.02, gt=0, lt=1)
+    bootstrap: ForecastBootstrap = ForecastBootstrap()
+    mcs_alpha: float = Field(0.10, gt=0, lt=1)
+
+    @model_validator(mode="after")
+    def _consistent(self) -> ForecastConfig:
+        if min(self.horizons_days) < 1:
+            raise ValueError("forecast horizons must be at least one day")
+        if self.min_window_obs > self.window_days:
+            raise ValueError("min_window_obs exceeds window_days")
+        if self.calibration_origins + max(self.horizons_days) >= self.window_days:
+            raise ValueError("calibration_origins + longest horizon must fit in the window")
+        lo, hi = self.rough_h_bounds
+        if not 0.0 < lo < hi < 0.5:
+            raise ValueError("rough_h_bounds must satisfy 0 < low < high < 1/2")
+        for name, target in self.targets.items():
+            if self.benchmark not in target.models:
+                raise ValueError(f"benchmark {self.benchmark} missing from the {name} models")
+        return self
+
+
 class EstimationConfig(FrozenModel):
     """``config/estimation.yaml``: grids, estimators, inference, samples."""
 
@@ -249,6 +308,7 @@ class EstimationConfig(FrozenModel):
     impact: ImpactConfig
     inference: InferenceConfig
     split: SplitConfig
+    forecast: ForecastConfig | None = None
 
     def volume_windows(self) -> tuple[int, ...]:
         """Windows used for the volume rate, paper bins included."""
