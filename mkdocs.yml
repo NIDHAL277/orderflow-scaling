@@ -1,0 +1,54 @@
+site_name: orderflow-scaling
+site_description: Asset-by-asset test of the order-flow / volume / volatility / impact scaling laws on crypto
+repo_url: https://github.com/nidhal-v/orderflow-scaling
+theme:
+  name: material
+  features: [navigation.sections, content.code.copy]
+  palette:
+    - scheme: default
+      toggle: {icon: material/brightness-7, name: Dark mode}
+    - scheme: slate
+      toggle: {icon: material/brightness-4, name: Light mode}
+markdown_extensions:
+  - admonition
+  - tables
+  - toc: {permalink: true}
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+nav:
+  - Home: index.md
+  - Compliance with the spec: compliance.md
+  - Architecture: architecture.md
+  - Data: data.md
+  - Data sources: data-sources.md
+  - Literature watch: literature-watch.md
+  - Estimators: estimators.md
+  - Protocol: protocol.md
+  - Operations: operations.md
+  - Decisions:
+      - adr/0001-record-decisions.md
+      - adr/0002-versioned-daily-outputs.md
+      - adr/0003-causal-seasonal-profile.md
+      - adr/0004-additive-daily-statistics.md
+      - adr/0005-volatility-horizon-and-estimators.md
+      - adr/0006-protocol-state-in-the-image.md
+      - adr/0007-daily-files-over-monthly.md
+      - adr/0008-h0-variance-and-weighting.md
+      - adr/0009-ohlc-check-in-ticks.md
+      - adr/0010-catch-up-and-corrections.md
+      - adr/0011-five-year-volatility-history.md
+      - adr/0012-trade-id-continuity.md
+  - Incidents:
+      - incidents/README.md
+      - incidents/2026-11-09-manifest-late-null-column.md
+      - incidents/2026-11-09-perpetual-klines-without-trades.md
+      - incidents/2026-11-09-network-error-labelled-delisted.md
+      - incidents/2026-11-09-futures-kline-open-convention.md
+      - incidents/2026-11-09-universe-build-without-retries.md
+      - incidents/2026-11-09-corrections-not-applied.md
+      - incidents/2026-11-09-unpublished-trade-ids.md
+      - incidents/2026-11-09-fgn-precision-and-lost-study.md
+      - incidents/2026-11-09-cleanup-deleted-derived-data.md

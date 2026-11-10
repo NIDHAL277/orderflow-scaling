@@ -1,0 +1,55 @@
+# Production stack (spec §11.2): pipeline + API + dashboard behind Caddy (HTTPS, rate limit).
+#   cp .env.example .env && docker compose up -d
+# ./data is written by the pipeline (uid 1000) and mounted read-only in api and dashboard.
+
+x-ofs: &ofs
+  image: ghcr.io/${GITHUB_OWNER:-nidhal-v}/orderflow-scaling:${OFS_IMAGE_TAG:-latest}
+  build:
+    context: .
+    args:
+      GIT_SHA: ${GIT_SHA:-dev}
+  env_file: [.env]
+  restart: unless-stopped
+
+services:
+  pipeline:
+    <<: *ofs
+    command: ["supercronic", "-passthrough-logs", "/app/scripts/crontab"]
+    volumes:
+      - ./data:/data
+
+  api:
+    <<: *ofs
+    command: ["uvicorn", "--factory", "ofs.api.app:create_app", "--host", "0.0.0.0", "--port", "8000",
+              "--proxy-headers", "--forwarded-allow-ips", "*"]
+    volumes:
+      - ./data:/data:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5)"]
+      interval: 1m
+      timeout: 10s
+      retries: 3
+
+  dashboard:
+    <<: *ofs
+    command: ["streamlit", "run", "/app/dashboards/app.py", "--server.port=8501", "--server.address=0.0.0.0",
+              "--server.headless=true", "--browser.gatherUsageStats=false"]
+    volumes:
+      - ./data:/data:ro
+
+  caddy:
+    build:
+      context: .
+      dockerfile: docker/caddy.Dockerfile
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    env_file: [.env]
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [api, dashboard]
+
+volumes:
+  caddy_data: {}
+  caddy_config: {}

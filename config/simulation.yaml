@@ -1,0 +1,39 @@
+# Simulation study (spec §9 step 1, module M5 acceptance).
+version: 1
+seed: 20261107
+
+# `full` simulates samples as long as the real ones (365 days) so that the coverage and the
+# true-sd / bootstrap-sd ratio it reports are the ones that matter for the tests.
+profiles:
+  ci:    {reps: 4,   bootstrap: 0,   days: 6,   hsigma_days: 40,  signs_days: 3}
+  quick: {reps: 40,  bootstrap: 99,  days: 20,  hsigma_days: 120, signs_days: 10}
+  full:  {reps: 200, bootstrap: 199, days: 365, hsigma_days: 365, signs_days: 60}
+
+h0:
+  true_values: [0.6, 0.7, 0.75, 0.8, 0.9]
+  nsr: [0.0, 0.5, 1.0, 2.0]          # sd of the Brownian component / sd of the fractional one, per bin
+  resolution_s: 10
+
+hvol:
+  true_values: [0.1, 0.2, 0.25, 0.3, 0.4]
+  nsr: [0.0, 0.5, 1.0, 2.0]          # sd of measurement noise / sd of lag-1 rate increments
+  resolution_s: 10
+  log_rate_sd: 0.5
+
+hsigma:
+  true_values: [0.05, 0.1, 0.15, 0.25]
+  nsr: [0.0, 0.5, 1.0, 2.0]          # sd of price noise / sd of 10 s efficient returns
+  steps_per_day: 8640                # 10-second grid
+  eta: 0.6                           # vol-of-vol, time in days (GJR: nu ~ 0.3 on log sigma)
+  xi: 0.0009                         # daily variance level (3 % daily vol)
+  rho: -0.3
+  tick: 1.0e-5                       # relative tick size used for price rounding
+
+delta:
+  true_values: [0.3, 0.4, 0.5, 0.6]
+  nsr: [0.0, 0.5, 1.0, 2.0]          # sd of impact noise / sd of the deterministic impact
+  runs_per_day: 20000
+
+acceptance:
+  max_abs_bias: 0.02
+  coverage: [0.93, 0.97]

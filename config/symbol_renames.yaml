@@ -1,0 +1,16 @@
+# Versioned table of Binance symbol renames (spec §6.3, step 6).
+# Days before `effective` are downloaded under the old symbol and stored under the new one;
+# days in [effective, resume) are a trading suspension during the token swap (explained gaps).
+# Dates checked on the S3 listing of data.binance.vision on 2026-11-09 (last daily file of the
+# old symbol, first daily file of the new one), market by market.
+version: 2
+renames:
+  # MATIC -> POL: spot MATICUSDT last 2024-09-10, perpetual last 2024-09-04; POLUSDT first 2024-09-13.
+  - {old: MATICUSDT, new: POLUSDT, effective: 2024-09-11, resume: 2024-09-13, markets: [spot]}
+  - {old: MATICUSDT, new: POLUSDT, effective: 2024-09-05, resume: 2024-09-13, markets: [um]}
+  # RNDR -> RENDER: spot RNDRUSDT last 2024-07-22, perpetual last 2024-07-16; RENDERUSDT first 2024-07-26.
+  - {old: RNDRUSDT, new: RENDERUSDT, effective: 2024-07-23, resume: 2024-07-26, markets: [spot]}
+  - {old: RNDRUSDT, new: RENDERUSDT, effective: 2024-07-17, resume: 2024-07-26, markets: [um]}
+  # FTM -> S (Sonic): spot FTMUSDT last 2025-01-13, perpetual last 2025-01-06; SUSDT first 2025-01-16.
+  - {old: FTMUSDT, new: SUSDT, effective: 2025-01-14, resume: 2025-01-16, markets: [spot]}
+  - {old: FTMUSDT, new: SUSDT, effective: 2025-01-07, resume: 2025-01-16, markets: [um]}

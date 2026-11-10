@@ -1,0 +1,41 @@
+# python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+build/
+dist/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.hypothesis/
+.benchmarks/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# data never goes to git (Binance terms: only derived statistics are published)
+data/*
+!data/.gitkeep
+
+# generated report artefacts (rebuilt by `make report`)
+paper/figures/*.pdf
+paper/figures/*.png
+paper/tables/*.tex
+paper/*.aux
+paper/*.log
+paper/*.out
+paper/*.bbl
+paper/*.blg
+paper/*.fdb_latexmk
+paper/*.fls
+paper/*.synctex.gz
+paper/main.pdf
+paper/slides.pdf
+site/
+
+# local env
+.env
+*.tmp-*
+.DS_Store

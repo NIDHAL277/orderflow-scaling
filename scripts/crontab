@@ -1,0 +1,6 @@
+# supercronic schedule of the pipeline container (UTC). Spec §11.3.
+# Daily run at 02:30, retried every hour until 12:30: `ofs daily` is idempotent and returns
+# immediately once the day is done; at 12:xx files still absent become "missing" and alert.
+30 2-12 * * * ofs daily --jobs 2
+# Weekly backup of daily_stats, estimates, tests and bookkeeping to Cloudflare R2 (Sunday 04:00).
+0 4 * * 0 /app/scripts/backup.sh

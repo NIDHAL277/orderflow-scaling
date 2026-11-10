@@ -1,0 +1,72 @@
+# Estimation configuration (spec Annex B). Frozen by the git tag `config-frozen`
+# before the first estimation on the confirmation sample (spec §9, step 2).
+version: 1
+seed: 20261106
+windows_seconds: [1, 5, 10, 30, 60]
+seasonality: hour_of_week          # 168 cells
+seasonality_window_days: 84        # trailing window used to estimate the profile (causal)
+
+h0:
+  model: mixed_fbm
+  tau_grid: {min_s: 1, max_s: 14400, points: 30, spacing: log}
+  controls: [single_fbm, sign_acf, dfa2, qv_ratio]
+  concordance_control: sign_acf    # "a result counts only if both estimators agree within 0.05"
+  sign_acf_max_lag: 10000
+  sign_acf_lag_bins: 40
+  sign_acf_fit_lags: {min: 10, max: 10000, points: 2}
+  dfa_boxes: {min_s: 120, max_s: 14400, points: 12, spacing: log}
+  primary_window_s: 10
+  weighting: counts                # weighted NLS: inverse variance of log V(tau) ~ 1/tau (spec §5.2);
+                                   # halves the sd vs equal weights in simulation (log_uniform kept as option)
+
+hvol:
+  q_grid: [0.5, 1.0, 1.5, 2.0, 3.0]
+  lag_grid: {min: 1, max: 360, points: 20, spacing: log}
+  reproduce_paper_bins_s: [5, 6, 8, 10, 12]
+  primary_window_s: 10
+  acov_max_lag: 10                 # paper-style control: autocovariance of increments (GMM)
+  truncate_sd: 3.0                 # increments truncated at 3 sd, as in the paper (App. C)
+  # Roles are fixed in config/preregistration.md from the simulation study (P2),
+  # before the tag prereg-v1. Spec default: moments principal, log-moments control.
+  primary_estimator: moments       # moments | acov_gmm
+  control_estimator: moments_log   # moments_log | acov_gmm | moments
+
+hsigma:
+  primary: daily                   # theory predicts the *extraday* roughness (paper, Remark 4.2)
+  q_grid: [0.5, 1.0, 1.5, 2.0, 3.0]
+  # Spec default: GJR principal, Whittle (Fukasawa-Takabatake-Westphal) control.
+  # Preliminary simulations: GJR on daily RV is biased upward near H = 0; see preregistration.
+  primary_estimator: gjr           # gjr | whittle_fukasawa
+  control_estimator: whittle_fukasawa
+  daily:
+    return_s: 300
+    estimators: [gjr, whittle_fukasawa, pvariation]
+    lags_days: {min: 1, max: 50, points: 12, spacing: log}
+  intraday:
+    return_s: 10
+    window_s: 900
+    lags: {min: 1, max: 48, points: 12, spacing: log}
+
+impact:
+  proxy_a_gaps_s: [1, 5, 30]
+  primary_gap_s: 5
+  proxy_a_min_trades: 2
+  proxy_a_q_bins: {min_usd: 1.0, max_usd: 1.0e9, per_decade: 8}
+  proxy_a_min_bin_count: 30
+  proxy_b_horizons_s: [60, 300, 900, 3600]
+  proxy_b_x_edges: [0.0, 0.05, 0.1, 0.2, 0.3, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0]
+  proxy_b_min_abs_x: 0.2
+
+inference:
+  bootstrap: {kind: stationary, mean_block_days: 7, sensitivity_days: [3, 14], replications: 999, ci_method: percentile,
+              sd_inflation: 1.0}   # set from `make sim` (sd_ratio at 365 days) before prereg-v1
+  regression: deming
+  alpha: 0.01
+  multiplicity: holm
+  equivalence_margin_hurst: 0.05
+  liquid_pairs_h4: 20
+
+split:
+  development: {from: 2024-11-01, to: 2025-10-31}
+  confirmation: {from: 2025-11-01, to: 2026-10-31}
+  history: {from: 2021-11-01, to: 2026-10-31}     # daily volatility only (spec §4, up to 5 years)

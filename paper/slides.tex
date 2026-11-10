@@ -1,0 +1,124 @@
+% 10 slides, 10 minutes (spec §12). Built by `make report` with the figures and the
+% result macros of the paper: nothing on these slides is typed by hand.
+\documentclass[aspectratio=169,11pt]{beamer}
+\usetheme{default}
+\usecolortheme{seahorse}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{footline}[frame number]
+\usepackage[T1]{fontenc}
+\usepackage{lmodern,booktabs,graphicx,amsmath}
+\graphicspath{{figures/}}
+\newcommand{\Hz}{H_0}
+\newcommand{\fig}[2]{\IfFileExists{figures/#1}{\includegraphics[height=#2\textheight]{#1}}{\fbox{\parbox{0.6\linewidth}{\centering\small figure \texttt{#1}: built by \texttt{make report}}}}}
+\IfFileExists{tables/macros.tex}{\input{tables/macros.tex}}{\newcommand{\resultHOne}{pending}\newcommand{\resultHTwo}{pending}\newcommand{\resultHThree}{pending}}
+
+\title{One exponent to rule them all?}
+\subtitle{An asset-by-asset test of the scaling laws of order flow, volume, volatility and
+impact on crypto markets}
+\author{nidhal.V}
+\date{Data: Binance Vision, CC BY-NC-SA 4.0 --- not affiliated with Binance}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\begin{frame}{The question}
+  A 2026 theory (Muhle-Karbe, Ouazzani Chahdi, Rosenbaum \& Szymanski): one number,
+  the persistence $\Hz$ of the signed flow of core orders, fixes three other exponents.
+  \medskip
+  \begin{center}
+  \begin{tabular}{lcc}
+    \toprule
+    Quantity & Predicted exponent & if $\Hz=3/4$ \\
+    \midrule
+    Signed flow (Hurst) & $\Hz$ & 0.75 \\
+    Volume rate (Hurst) & $\Hz-\tfrac12$ & 0.25 \\
+    Extraday volatility (Hurst) & $2\Hz-\tfrac32$ & 0 \\
+    Impact of a meta-order (time exponent) & $2-2\Hz$ & 0.5 \\
+    \bottomrule
+  \end{tabular}
+  \end{center}
+  \medskip
+  Tested so far only \alert{on average}, over 40 stocks. Does it hold \alert{asset by asset}?
+\end{frame}
+
+\begin{frame}{What is new here}
+  \begin{itemize}
+    \item The four exponents estimated on the \alert{same data}, for each of 60 crypto pairs,
+      spot and perpetual.
+    \item A \alert{joint} cross-sectional test of slopes and intercepts, corrected for the
+      errors in $\widehat{\Hz}$ (Deming regression, synchronized block bootstrap, Wald, Holm).
+    \item A different market: open 24 hours, the side of every trade reported by the exchange.
+    \item Estimators validated \alert{by simulation} with microstructure noise before touching
+      real data; hypotheses and decision rule \alert{pre-registered} (git tag
+      \texttt{prereg-v1}); confirmation sample frozen (\texttt{config-frozen}).
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Data}
+  \begin{itemize}
+    \item Binance Vision aggTrades, 60 USDT pairs ranked by median daily notional, spot and
+      USD-M perpetuals, November 2024 -- October 2026 (12 months development, 12 months
+      confirmation); up to 5 years of 1-minute klines for daily volatility.
+    \item Every file: SHA-256, schema, id continuity, prices, OHLC against klines, jumps;
+      every pair-day ends reduced, blocked or explained (\texttt{ofs quality}).
+    \item Reduced to 1-s and 10-s windows and additive daily sufficient statistics, then
+      deleted: the bootstrap never reads a trade again.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Estimators, validated by simulation}
+  \begin{columns}[T]
+    \column{0.42\textwidth}
+    \small
+    \begin{itemize}
+      \item $\Hz$: mixed fBm on aggregated variances; control: sign autocorrelation.
+      \item $H_{\mathrm{vol}}$: moments of the volume rate / autocovariance GMM.
+      \item $H_\sigma$: GJR moments / Whittle on daily RV.
+      \item $\delta$: same-side runs (proxy, exploratory).
+    \end{itemize}
+    Pre-registered rule: an estimator is used only where its simulated bias is below 0.02.
+    \column{0.56\textwidth}
+    \centering\fig{fig5_bias_maps.pdf}{0.72}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{$\Hz$, asset by asset}
+  \centering\fig{fig1_h0_by_asset.pdf}{0.78}
+\end{frame}
+
+\begin{frame}{H1 --- volume: $H_{\mathrm{vol}} = \Hz - \tfrac12$}
+  \centering\fig{fig2_h1_hvol.pdf}{0.70}\par
+  Decision (spot, confirmation sample): \alert{\resultHOne}
+\end{frame}
+
+\begin{frame}{H2 --- volatility: $H_\sigma = 2\Hz - \tfrac32$}
+  \centering\fig{fig3_h2_hsigma.pdf}{0.70}\par
+  Decision (spot, confirmation sample): \alert{\resultHTwo}
+\end{frame}
+
+\begin{frame}{H3 --- impact (exploratory), spot vs perpetual, robustness}
+  \begin{columns}[T]
+    \column{0.49\textwidth}
+    \centering\fig{fig4_h3_delta.pdf}{0.55}\par
+    \small Impact: \alert{\resultHThree}
+    \column{0.49\textwidth}
+    \centering\fig{fig8_specification_curve.pdf}{0.55}\par
+    \small every variant, sorted, with its CI (not corrected)
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Take-aways and reproducibility}
+  \begin{itemize}
+    \item Volume: \resultHOne; volatility: \resultHTwo; impact: \resultHThree.
+    \item A rejection is reported with the same care as a confirmation; an undecided
+      relation comes with the number of days needed to decide it.
+    \item \texttt{make all} rebuilds every table and figure from a clean clone; the pipeline
+      runs every day in a container and updates the rolling estimates and the dashboard.
+    \item Code MIT; data and derived results CC BY-NC-SA 4.0 (Binance Vision).
+  \end{itemize}
+\end{frame}
+
+\end{document}

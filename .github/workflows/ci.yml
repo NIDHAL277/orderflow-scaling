@@ -1,0 +1,162 @@
+name: ci
+
+# Spec §10: every push runs lint, types, unit + property tests, a small simulation
+# suite (< 10 min) and the Docker build; every week the full simulation suite,
+# pip-audit and the report; every tag v* publishes the image and the documentation.
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*"]
+  pull_request:
+  schedule:
+    - cron: "0 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'schedule' }}
+
+env:
+  UV_VERSION: "0.13.7"
+  NUMBA_CACHE_DIR: /tmp/numba
+  MPLBACKEND: Agg
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # tags: code version and protocol guard
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: ${{ env.UV_VERSION }}
+          python-version: "3.12"
+          enable-cache: true
+      - run: uv sync --frozen
+      - name: Lint and format
+        run: |
+          uv run --frozen ruff check .
+          uv run --frozen ruff format --check .
+      - name: Types (mypy --strict)
+        run: uv run --frozen mypy
+      - name: Unit, property and simulation tests (coverage >= 85 %)
+        run: uv run --frozen pytest --cov=ofs --cov-report=xml --cov-report=term
+      - name: Small simulation suite (< 10 min)
+        run: uv run --frozen ofs --data-dir /tmp/ofs-data simulate study --profile ci --max-cells 12
+      - name: Simulator acceptance (M4)
+        run: uv run --frozen ofs --data-dir /tmp/ofs-data simulate check
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage.xml
+
+  docker:
+    needs: quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          tags: orderflow-scaling:ci
+          build-args: GIT_SHA=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  weekly:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: ${{ env.UV_VERSION }}
+          python-version: "3.12"
+          enable-cache: true
+      - run: uv sync --frozen
+      - name: Dependency audit
+        run: uv run --frozen pip-audit --strict --progress-spinner off
+      - name: Slow tests and benchmarks
+        run: uv run --frozen pytest -m slow
+      - name: Full simulation suite (O2)
+        run: uv run --frozen ofs --data-dir data simulate study --profile full --jobs 4
+      - name: Report on the simulation sample
+        run: uv run --frozen ofs --data-dir data report --sample confirmation --profile full --no-pdf
+      - uses: xu-cheng/latex-action@v3
+        with:
+          working_directory: paper
+          root_file: |
+            main.tex
+            slides.tex
+      - uses: actions/upload-artifact@v4
+        with:
+          name: weekly-report
+          path: |
+            data/simulation/summary_full.parquet
+            paper/main.pdf
+            paper/slides.pdf
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [quality, docker]
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Protocol state baked into the image (docs/adr/0006)
+        id: protocol
+        run: |
+          echo "tags=$(git tag -l prereg-v1 config-frozen | paste -sd, -)" >> "$GITHUB_OUTPUT"
+          if git rev-parse -q --verify config-frozen >/dev/null; then
+            echo "frozen=$(git show config-frozen:config/estimation.yaml | sha256sum | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/metadata-action@v5
+        id: meta
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=raw,value=latest
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            GIT_SHA=${{ github.sha }}
+            PROTOCOL_TAGS=${{ steps.protocol.outputs.tags }}
+            FROZEN_CONFIG_SHA256=${{ steps.protocol.outputs.frozen }}
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: ${{ env.UV_VERSION }}
+          python-version: "3.12"
+      - name: Publish the documentation (GitHub Pages)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          uv run --frozen mkdocs gh-deploy --force

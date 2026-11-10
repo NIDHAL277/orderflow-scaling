@@ -1,0 +1,45 @@
+# Operational configuration of the daily pipeline (paths, ingestion, monitoring).
+version: 1
+data_dir: data
+
+ingest:
+  base_url: https://data.binance.vision
+  listing_url: https://s3-ap-northeast-1.amazonaws.com/data.binance.vision
+  concurrency: 8          # parallel HTTP requests
+  retries: 5              # tenacity, exponential back-off
+  timeout_s: 120
+  markets: [spot, um]
+
+validation:
+  # OHLC vs 1-minute klines (docs/adr/0009): a day fails if a kline minute has no trades,
+  # if a minute is off by > 1 %, or if > 0.5 % of minutes are off by > max(0.01 %, 2 ticks).
+  # ohlc_tolerance_ticks: 0 and max_ohlc_bad_minute_fraction: 0 give the literal 0.01 % rule.
+  max_ohlc_rel_dev: 1.0e-4
+  ohlc_tolerance_ticks: 2
+  max_ohlc_bad_minute_fraction: 0.005
+  ohlc_gross_rel_dev: 0.01
+  jump_threshold: 0.20        # > 20 % in one second is flagged and inspected
+  # Trade-id continuity (docs/adr/0012): USD-M files miss small runs of trade ids that are
+  # never published (0.01 % of ids in early 2025, 0.1-0.3 % from mid-2025; spot: none).
+  # A day is blocked when aggTrade rows are missing, when one run of trade ids longer than
+  # 1000 is missing, or when more than 2 % of the ids are; every gap is logged.
+  max_id_gap_fraction: 0.02
+  max_id_gap_run: 1000
+  max_agg_id_gaps: 0
+
+reduce:
+  one_second_top_n: 10        # 1-second bins only for the 10 most liquid pairs
+  delete_raw: true            # raw zips are deleted once the day is reduced
+
+daily:
+  first_attempt_utc: "02:30"
+  retry_until_hour_utc: 12
+  rolling_months: 24
+  rolling_replications: 199
+  catchup_days: 7             # each run also replays the previous 6 days (late or failed files)
+  recheck_weekday: 6          # after Sunday's data: apply files Binance re-published ...
+  recheck_days: 30            # ... over the last 30 days (`ofs recheck`)
+
+monitoring:
+  healthchecks_url_env: OFS_HEALTHCHECKS_URL
+  disk_alert_fraction: 0.8

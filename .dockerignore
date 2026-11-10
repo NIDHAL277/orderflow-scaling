@@ -1,0 +1,15 @@
+.git
+.venv
+data
+paper
+docs
+notebooks
+tests
+site
+.mypy_cache
+.ruff_cache
+.pytest_cache
+.hypothesis
+.benchmarks
+**/__pycache__
+.env

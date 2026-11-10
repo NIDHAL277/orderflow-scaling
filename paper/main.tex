@@ -1,0 +1,349 @@
+\documentclass[11pt]{article}
+\usepackage[a4paper,margin=2.5cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern,microtype,amsmath,amssymb,booktabs,graphicx,hyperref,natbib,amsfonts}
+\hypersetup{colorlinks=true,linkcolor=blue!50!black,citecolor=blue!50!black,urlcolor=blue!50!black}
+\graphicspath{{figures/}}
+\newcommand{\Hz}{H_0}
+\newcommand{\Hv}{H_{\mathrm{vol}}}
+\newcommand{\Hs}{H_\sigma}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\figureif}[3]{\IfFileExists{figures/#1}{\begin{figure}[htbp]\centering\includegraphics[width=#2\linewidth]{#1}\caption{#3}\label{fig:#1}\end{figure}}{}}
+\newcommand{\tableif}[1]{\IfFileExists{tables/#1}{\input{tables/#1}}{}}
+% Every number below that depends on data comes from tables/macros.tex (make report).
+\IfFileExists{tables/macros.tex}{\input{tables/macros.tex}}{}
+\providecommand{\resultHOne}{pending}
+\providecommand{\resultHTwo}{pending}
+\providecommand{\resultHThree}{pending}
+\providecommand{\nPairs}{60}
+\providecommand{\nPerps}{59}
+\providecommand{\pairDays}{pending}
+\providecommand{\sdInflation}{1}
+
+\title{One Exponent to Rule Them All? An Asset-by-Asset Test of the Scaling Laws of
+Order Flow, Volume, Volatility and Market Impact on Crypto Markets}
+\author{nidhal.V}
+\date{Working paper --- \today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\citet{mocrs2026} derive from a nearly unstable Hawkes model of order flow that a single
+statistic, the persistence $\Hz$ of the signed flow of core orders, fixes the roughness of
+the volume rate ($\Hz-\tfrac12$), the roughness of extraday volatility ($2\Hz-\tfrac32$) and
+the time exponent of the market impact of constant-rate meta-orders ($2-2\Hz$). Their
+empirical analysis estimates $\Hz$ and the volume exponent on average over 40 stocks; the
+volatility and impact exponents are taken from the literature. We estimate the four
+exponents on the same data for each of \nPairs{} cryptocurrency pairs traded on Binance,
+spot and perpetual (\nPerps{} perpetuals), with estimators validated by simulation under
+microstructure noise, and test the three relations jointly in the cross-section with
+errors-in-variables regressions and a bootstrap synchronized across assets, under a
+pre-registered protocol with a frozen confirmation sample. Volume relation: \resultHOne;
+volatility relation: \resultHTwo; impact relation (exploratory, proxy measure):
+\resultHThree.
+\end{abstract}
+
+\section{Introduction}
+Three facts of market microstructure are robust across assets and periods: volatility is
+rough, with a Hurst exponent of log-volatility near 0.1 \citep{gatheral2018}; the signs of
+market orders are positively correlated over thousands of trades
+\citep{lillo2004,bouchaud2004}; and the price impact of a large order grows roughly as the
+square root of its size \citep{toth2011}. \citet{eleuch2018} and \citet{jusselin2020}
+connected them through nearly unstable Hawkes processes, and \citet{mocrs2026} unify them:
+in their model a single exponent, $\Hz$, sets all three.
+
+Their empirical support rests on equities and on averages: $\Hz$ estimated on 40 stocks
+lies between 0.75 and 0.80 under a mixed fractional specification, and the roughness of
+unsigned volume between 0.15 and 0.35, both consistent with $\Hz\approx 3/4$; the
+roughness of volatility and the impact exponent are quoted from earlier studies. Whether
+the relations hold \emph{asset by asset}, when the four exponents are measured on the same
+data, is open. This paper tests it.
+
+We contribute (i) estimates of the four exponents on the same trades for each asset;
+(ii) a joint test of the predicted intercepts and slopes in the cross-section of assets,
+with regressions that account for the estimation error of $\hat\Hz$ and a block bootstrap
+synchronized across assets; (iii) a different market, open around the clock, where the
+exchange reports the aggressor side of every trade; (iv) estimators validated beforehand on
+simulated data with microstructure noise, which answers the objection that roughness can
+be an artefact of estimation \citep{contdas2024}; and (v) a pre-registered protocol: the
+hypotheses, estimators, grids and decision rule were fixed and tagged in the code
+repository before any estimator ran on real data, and the confirmation sample was only
+used once, with a frozen configuration.
+
+A search of arXiv in November 2026, repeated every month since, found no test of these
+relations on crypto markets; studies of Bitcoin report rough or
+multifractal volatility \citep{takaishi2020} but do not relate it to the order flow.
+
+\section{Theory and predictions}
+\label{sec:theory}
+\citet{mocrs2026} model \emph{core} buy and sell orders as two independent Hawkes
+processes with a common kernel $\varphi_0$, and \emph{reaction} orders as a bivariate
+Hawkes process driven by the core flow. In a nearly unstable regime the kernel norm tends to
+one and its tail decays as a power law, $\int_t^\infty \varphi_0 \sim t^{-\alpha_0}$, with
+$1/4<\alpha_0<1/2$. Their main results, in the scaling limit, are the following.
+
+\begin{itemize}
+\item \textbf{Signed flow.} The signed order flow converges to the sum of a process with
+the local regularity of a fractional Brownian motion of Hurst index $\Hz=2\alpha_0\in
+(1/2,1)$, coming from core orders, and of a martingale, coming from reaction orders; it is
+well approximated by a mixed fractional Brownian motion $W_t + B^{\Hz}_t$ (their
+Theorem~3.6 and Section~3.3).
+\item \textbf{Volume.} Cumulative unsigned volume converges to the integral of a rough
+process whose regularity is $\Hz-\tfrac12$ (Theorems~3.4--3.5): the prediction concerns
+the \emph{volume rate}, not cumulative volume.
+\item \textbf{Volatility and impact.} No-arbitrage arguments then give a volatility with
+Hurst parameter $2\Hz-\tfrac32$, to be read as an \emph{extraday} volatility (their
+Remark~4.2), and an average impact $\mathrm{MI}(t)\sim t^{2-2\Hz}$ in renormalised time
+for a meta-order executed at a constant rate (their Theorem~4.1).
+\end{itemize}
+
+With $\Hz=3/4$, the square-root law of impact, the volume rate has roughness 1/4 and the
+extraday volatility a Hurst parameter near 0. We write the three relations as
+$Y_i=a+b\,\Hz_i$ across assets $i$:
+\begin{center}
+\begin{tabular}{llll}
+\toprule
+Hypothesis & Relation & Prediction $(a;b)$ & Status \\
+\midrule
+H1 --- volume & $\Hv=\Hz-\tfrac12$ & $(-0.5;1)$ & confirmatory \\
+H2 --- volatility & $\Hs=2\Hz-\tfrac32$ & $(-1.5;2)$ & confirmatory \\
+H3 --- impact & $\delta=2-2\Hz$ & $(2;-2)$ & exploratory \\
+H4 --- level & $\Hz\in[0.70,0.85]$ for liquid pairs & --- & descriptive \\
+H5 --- robustness & same exponents on spot and perpetual & --- & robustness \\
+\bottomrule
+\end{tabular}
+\end{center}
+H3 is exploratory because without trader identifiers meta-orders can only be
+approximated (Section~\ref{sec:estimators}). Two features of the source deserve mention:
+one passage of its Section~3.3 reports mixed-model estimates around 0.65 while the
+introduction and conclusion report 0.75--0.80, and the impact result is stated under the
+approximations of its Section~4 without a proof in the appendix.
+
+\section{Data}
+\label{sec:data}
+\paragraph{Source.} All data are the public files of Binance Vision: daily
+\texttt{aggTrades} for spot pairs and USD-M perpetuals, and 1-minute klines. An aggTrade
+groups the fills of one taker order at one price; the field \texttt{is\_buyer\_maker} gives
+the side of the aggressor, so the sign $\varepsilon_i=+1$ for a buyer-initiated order and
+$-1$ otherwise needs no classification rule. Each file is verified against its published
+SHA-256 checksum. The data are licensed by Binance under CC BY-NC-SA 4.0 (Binance Vision
+Dataset Terms, version 1.0); the statistics, tables and figures derived from them are
+distributed under the same licence. This non-commercial research is not affiliated with or
+endorsed by Binance. Other sources were reviewed: the Bybit archive has signed trades but no
+checksums, and the other archives found were paid or incomplete.
+
+\paragraph{Universe and samples.} USDT spot pairs, excluding stablecoin pairs, fiat and
+leveraged tokens, are ranked by median daily quote volume over 2024-11-01 to 2026-10-31;
+the first \nPairs{} with a daily aggTrades file on at least 95\,\% of days are kept, with the
+perpetual of the same crypto when its files cover 95\,\% of days as well
+(Table~\ref{tab:universe}). Availability is counted on aggTrades rather than klines:
+klines can outlive trades. Symbol renames (MATIC to POL, RNDR to RENDER, FTM to S) are
+merged through a versioned table; the days of a token swap are explained gaps. The gold
+token PAXG and wrapped bitcoin (WBTC) were left out before any estimation: the first
+follows the price of gold, the second duplicates bitcoin. The first twelve months form the
+development sample, used to choose windows and ranges; the last twelve, the confirmation
+sample, are estimated once with the frozen configuration. For daily volatility only, the
+history extends to five years (2021-11 to 2026-10) where it exists, rebuilt from monthly
+1-minute klines.
+\tableif{universe.tex}
+
+\paragraph{Quality controls.} A day enters the analysis only if it passes blocking controls:
+checksum; schema; strictly increasing aggTrade identifiers; no missing aggTrade row, no run
+of more than 1\,000 missing trade identifiers and at most 2\,\% of them missing; positive
+prices and quantities; timestamps sorted inside the UTC day; and an OHLC rebuilt from the
+trades that matches the 1-minute klines (no kline minute without trades, none off by more
+than 1\,\%, at most 0.5\,\% of minutes off by more than 0.01\,\% or two ticks). Price moves
+above 20\,\% within a second are flagged for inspection. Files re-published by Binance are
+detected by their checksums and processed again. Two conventions of the perpetual feed
+surfaced on the real files and are documented in the code repository: from mid-2025 a
+small share of trade identifiers (0.1--0.3\,\%) belongs to fills that are not in the trade
+files, while the aggTrade identifiers remain consecutive; and a 1-minute kline may open at the
+last price of the previous minute. Neither indicates missing data, and the controls test
+what does: missing rows, long runs of missing identifiers, missing minutes.
+Table~\ref{tab:quality} reports the state of every pair-day of the window: \pairDays{}
+pair-days are usable.
+\tableif{quality.tex}
+
+\paragraph{Reduction.} Each day is reduced, then its raw file is deleted. Trades are
+aggregated on windows of $\Delta=10$\,s (and 1\,s for the ten most liquid pairs): signed
+notional $F_k=\sum_{t_i\in\text{window }k}\varepsilon_i p_i q_i$, notional $V_k$, number of
+trades and last price. Order flow has a strong weekly pattern; every series is divided by
+its profile over the 168 hours of the week, estimated on the trailing 84 days only (no
+look-ahead). From the windows we keep additive daily \emph{sufficient statistics}: sums
+and sums of squares of the increments of $X_n=\sum_{k\le n}F_k$ for 30 log-spaced lags from
+1\,s to 4\,h; sign autocovariances in event time up to $10^4$ trades, by FFT; sums of
+$|v_{k+\ell}-v_k|^q$ for the volume rate $v_k=V_k/\Delta$; the 5-minute realised variance,
+the two-scale realised variance \citep{zhang2005} and 96 local variances of 15 minutes;
+and runs of same-side trades binned by notional. Every estimator and every bootstrap
+replicate is a weighted sum of these daily rows, so no trade is read twice. On three random
+days, each statistic equals a naive trade-by-trade computation to $10^{-14}$ in relative
+terms; one day of the BTCUSDT perpetual during the liquidation cascade of 2025-10-10
+(4.3 million aggTrades) is reduced in 14 seconds with 1.4\,GB of memory.
+
+\section{Estimators}
+\label{sec:estimators}
+Each exponent has a principal and a control estimator; a result is reported as such only
+when the two agree within 0.05.
+
+\paragraph{$\Hz$.} The principal estimator fits the mixed model
+\[
+\E\bigl[(X_{t+\tau}-X_t)^2\bigr]=\sigma_1^2\,\tau^{2\Hz}+\sigma_2^2\,\tau
+\]
+by non-linear least squares on the aggregated variances, for $\tau$ from $\Delta$ to four
+hours, with weights proportional to $1/\tau$ (the inverse sampling variance under the
+Brownian null). The fractional part must explain, at four hours, more than twice the
+sampling error of the variance there; otherwise the flow is declared Brownian. The
+control is the event-time autocorrelation of signs, $C(\ell)\sim\ell^{-\gamma}$ with
+$\Hz=1-\gamma/2$, fitted on the leading lag bins that are significantly positive. We
+also report the slope of a simple fBm (which reproduces the bias, increasing with $\Delta$,
+noted by \citet{mocrs2026}), a detrended fluctuation analysis of order two
+\citep{peng1994}, and the quadratic-variation ratio on $(\Delta,2\Delta,4\Delta)$ used by
+\citet{mocrs2026}, in the spirit of the mixed-semimartingale estimators of
+\citet{chong2025}. As a negative control, the signs are permuted within each day, which
+must give $\Hz=1/2$.
+
+\paragraph{$\Hv$.} On the deseasonalised volume rate, the moments
+$m(q,\ell)=\overline{|v_{k+\ell}-v_k|^q}\propto\ell^{\,q\Hv}$ for
+$q\in\{0.5,1,1.5,2,3\}$, with a check that $\zeta(q)$ is linear in $q$; the control is the
+same computation on $\log v$. We also compute the estimator of \citet{mocrs2026}: a
+generalised method of moments \citep{lixiu2016} on the autocovariance of increments
+truncated at three standard deviations, which models white observation noise explicitly.
+
+\paragraph{$\Hs$.} The prediction concerns extraday volatility, so the daily horizon is
+primary: the moments of increments of daily log-volatility \citep{gatheral2018}, from the
+5-minute realised variance, for lags of 1 to 50 days; the control is the Whittle estimator
+of \citet{fukasawa2022}, which models the realised variance as a day-averaged fractional
+process observed with noise. The $p$-variation index of \citet{contdas2024} and the
+intraday horizon (15-minute local variances) are reported; the five-year daily history
+gives a robustness variant.
+
+\paragraph{$\delta$.} Without account identifiers, meta-orders are approximated by runs of
+same-side trades separated by less than $g$ seconds ($g\in\{1,5,30\}$): with
+$I=\varepsilon(\log p_{\text{end}}-\log p_{\text{start}})$ and $Q$ the notional of the run,
+we fit $\E[I\mid Q]=A\,Q^{\delta}$ on log-spaced bins of $Q$, and in the control the same law
+against the duration of the run, which matches the time exponent of the theory. A run mixes
+several traders, hence the exploratory status of H3. The aggregate impact of
+\citet{patzelt2018} is reported as a description.
+
+\section{Simulation study}
+\label{sec:simulation}
+Every estimator is first run on simulated data that go through the same reduction code as
+the real files: exact fractional Gaussian noise by circulant embedding
+\citep{daviesharte1987} and its mixture with a Brownian component for $\Hz$;
+long-memory signs from the order-splitting model of \citet{lmf2005}; a rough volume rate
+with observation noise for $\Hv$; rough Bergomi prices by the hybrid scheme of
+\citet{bennedsen2017}, with microstructure noise and rounding to the tick, for $\Hs$; and
+synthetic runs with a known impact exponent for $\delta$. The grid crosses true values
+($\Hz\in\{0.6,0.7,0.75,0.8,0.9\}$, $\Hv\in\{0.1,0.2,0.25,0.3,0.4\}$,
+$\Hs\in\{0.05,0.1,0.15,0.25\}$, $\delta\in\{0.3,0.4,0.5,0.6\}$) with noise-to-signal ratios
+$\{0,0.5,1,2\}$; each cell has 200 replications of 365 days and 199 bootstrap draws.
+An estimator is accepted where its bias is below 0.02 and the 95\,\% interval covers the
+true value between 93\,\% and 97\,\% of the time.
+
+The pre-registration fixes how the study decides: for $\Hv$ and $\Hs$ the estimator named
+by the specification is principal if its bias is below 0.02 on the cells of the plausible
+region, otherwise the alternative is, and the bootstrap spread is calibrated by the median
+ratio of the true to the bootstrap standard deviation over those cells,
+$k=\sdInflation$; coverage is then assessed on the calibrated intervals. A first, smaller
+study had shown why: under long memory the block bootstrap underestimates the sampling
+spread on short samples. Table~\ref{tab:simulation} and Figure~\ref{fig:fig5_bias_maps.pdf}
+report bias, RMSE and coverage for every estimator, including the cells where it fails.
+\tableif{simulation.tex}
+\figureif{fig5_bias_maps.pdf}{0.95}{Bias of the principal and control estimators in
+simulation; cell text: bias and coverage of the 95\,\% bootstrap interval.}
+
+\section{Cross-sectional test}
+\label{sec:inference}
+\paragraph{Uncertainty.} Days are resampled by a stationary block bootstrap
+\citep{politis1994} with a mean block of seven days (three and fourteen as sensitivity),
+$B=999$, and the \emph{same} days for every pair and both markets: the strong correlation
+between cryptocurrencies is kept in every replicate, and each replicate re-estimates every
+exponent from the daily statistics. Interval half-widths are multiplied by $k$ and the
+covariance of the test by $k^2$; results with $k=1$ are reported as well.
+
+\paragraph{Regression and test.} $\hat\Hz$ is itself estimated, so least squares of $Y_i$
+on $\hat\Hz_i$ would be biased towards zero \citep{fuller1987}. We fit a Deming regression
+with the ratio of error variances taken from the bootstrap, and test $(a,b)=(a_0,b_0)$
+with the Wald statistic $W=(\hat\theta-\theta_0)^\top\hat\Sigma^{-1}(\hat\theta-\theta_0)
+\sim\chi^2_2$, $\hat\Sigma$ being the bootstrap covariance of $(\hat a,\hat b)$; Holm's
+correction \citep{holm1979} applies to H1--H3.
+
+\paragraph{Decision.} A relation is \emph{rejected} if the corrected test rejects at 1\,\%
+and the mean gap $\bar g=\overline{Y_i-a_0-b_0\hat\Hz_i}$ exceeds 0.05 in Hurst units;
+\emph{compatible} if the test does not reject and the 95\,\% interval of $\bar g$ lies
+within $[-0.05,0.05]$; otherwise \emph{not decided}, with the number of days that would be
+needed, assuming an interval width proportional to $1/\sqrt{T}$. On synthetic universes of
+60 assets that satisfy the relations, the test at 1\,\% rejects between 0.9\,\% and
+1.3\,\% of the time; on universes that violate them by 0.05, 0.10 and 0.20 we report the
+power and the smallest effect detected with probability 0.8.
+
+\section{Protocol}
+\label{sec:protocol}
+The hypotheses, estimators, grids, decision rule and universe were written in
+\texttt{config/preregistration.md} and committed with the tag \texttt{prereg-v1} before
+any estimator ran on real data; until then real data served only to test ingestion and
+quality. The configuration was frozen a second time, by the tag \texttt{config-frozen},
+before the first estimation on the confirmation sample. Both rules are enforced by the
+code, which refuses to estimate otherwise. The rule for choosing estimators from the
+simulation study was amended before the full study had produced any result, in the light of
+a preliminary small study: requiring raw bootstrap coverage would have retained estimators
+known to be biased only because no estimator passes that test under long memory. Robustness checks --- windows $\Delta$,
+ranges of $\tau$, without deseasonalisation, spot against perpetual, high and low
+volatility regimes, without the five most liquid pairs, without days with extreme jumps,
+block lengths, control estimators, five-year volatility --- are descriptive and shown
+together as a specification curve.
+
+\section{Results}
+\label{sec:results}
+\tableif{estimates.tex}
+\figureif{fig1_h0_by_asset.pdf}{0.8}{$\hat\Hz$ by asset with 95\,\% bootstrap intervals.}
+\tableif{tests.tex}
+\figureif{fig2_h1_hvol.pdf}{0.85}{H1: volume roughness against $\hat\Hz$, with the
+predicted line.}
+\figureif{fig3_h2_hsigma.pdf}{0.85}{H2: volatility roughness against $\hat\Hz$, with the
+predicted line.}
+\figureif{fig4_h3_delta.pdf}{0.85}{H3: impact exponent against $\hat\Hz$, with the
+predicted line.}
+\figureif{fig6_forest_residuals.pdf}{0.95}{Per-asset gaps to the predicted relations with
+95\,\% intervals.}
+
+\section{Controls and robustness}
+\label{sec:robustness}
+\tableif{controls.tex}
+\figureif{fig7_spot_vs_perp.pdf}{0.95}{H5: exponents on the spot pair against the
+perpetual of the same crypto.}
+\figureif{fig8_specification_curve.pdf}{0.95}{Specification curve: every variant, sorted,
+with its interval; not corrected for multiplicity.}
+
+\section{Limitations}
+The impact exponent rests on a proxy: runs of same-side trades mix independent traders, and
+their duration is not the execution horizon of a meta-order. All assets trade on one
+exchange; crypto order flow fragments across venues, and the persistence measured on one
+venue need not equal that of the aggregate flow. Twelve months is short for daily-horizon
+roughness, which the five-year variant only partly addresses since the history lacks the
+trades needed for $\Hz$. The perpetual trade files miss a small share of fills from mid-2025;
+these fills appear to enter the klines but not the trade-level statistics. Finally, the relations
+are tested under the assumption that each exponent is stable within a sample; the
+specification curve and the comparison of the two samples show how far this holds.
+
+\section{Deviations from protocol}
+None so far. Every change made after the tag \texttt{prereg-v1} is listed here with its
+reason and its effect on the results.
+
+\section{Conclusion}
+To be written after the confirmatory tests.
+
+\appendix
+\section{Reproducibility}
+Every table and figure of this paper is rebuilt from a clean clone of the repository by
+\texttt{make all}: download and verification of the data, reduction, simulation study,
+estimation, tests and report. The pipeline also runs every day in a container, updates the
+rolling estimates and publishes a dashboard and a read-only API. Code is released under
+the MIT licence; raw Binance files are never redistributed, only derived statistics under
+CC BY-NC-SA 4.0. Each estimate carries the version of the code and a hash of the
+configuration it was computed with.
+
+\bibliographystyle{plainnat}
+\bibliography{references}
+\end{document}

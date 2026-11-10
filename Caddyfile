@@ -1,0 +1,30 @@
+# HTTPS (automatic certificates) and rate limiting in front of the read-only services.
+# Hosts come from .env: OFS_API_HOST, OFS_DASHBOARD_HOST (e.g. api.example.org).
+
+{$OFS_API_HOST:api.localhost} {
+	encode zstd gzip
+	route {
+		rate_limit {
+			zone api_per_client {
+				key {remote_host}
+				events 120
+				window 1m
+			}
+		}
+		reverse_proxy api:8000
+	}
+}
+
+{$OFS_DASHBOARD_HOST:dashboard.localhost} {
+	encode zstd gzip
+	route {
+		rate_limit {
+			zone dashboard_per_client {
+				key {remote_host}
+				events 600
+				window 1m
+			}
+		}
+		reverse_proxy dashboard:8501
+	}
+}

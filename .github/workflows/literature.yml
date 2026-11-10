@@ -1,0 +1,38 @@
+name: literature
+
+# Spec §2 and §13: the theory dates from 2026, so the arXiv check is repeated every month.
+# New papers close to the project are listed in an issue; what matters goes to
+# docs/literature-watch.md.
+on:
+  schedule:
+    - cron: "0 6 1 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+env:
+  UV_VERSION: "0.13.7"
+
+jobs:
+  arxiv:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: ${{ env.UV_VERSION }}
+          python-version: "3.12"
+          enable-cache: true
+      - run: uv sync --frozen
+      - name: Query arXiv (last 35 days)
+        run: uv run --frozen python scripts/arxiv_watch.py --days 35 | tee watch.md
+      - name: Open an issue when something is new
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! grep -q '^No new paper' watch.md; then
+            gh issue create --title "arXiv watch $(date -u +%Y-%m)" --body-file watch.md
+          fi
