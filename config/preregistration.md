@@ -182,7 +182,9 @@ A well-documented rejection is worth as much as a confirmation.
 
 Windows Δ; τ range (4 h vs 1 h); with / without deseasonalisation; spot vs perpetual;
 high / low volatility regimes (cross-sectional median daily RV above / below its median);
-without the 5 most liquid pairs; without days with a price jump > 20 % in one second;
+without the 5 most liquid pairs; without the pairs whose change-point monitor of H0 (CUSUM
+or Shiryaev–Roberts on 14-day blocks, `docs/changepoints.md`) alarmed during the sample;
+without days with a price jump > 20 % in one second;
 block length 3 / 14 days; control estimators; `H_σ` estimated on the 5-year daily RV
 history (`daily_5y`) against `Ĥ0` of the sample — its bootstrap resamples days of the
 five years, so pairing the replicates treats the two estimation errors as independent

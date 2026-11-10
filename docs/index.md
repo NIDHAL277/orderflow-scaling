@@ -17,6 +17,16 @@ Muhle-Karbe, Ouazzani Chahdi, Rosenbaum & Szymanski (2026).
 * [Estimators](estimators.md): what is estimated, how, and what simulation says about it.
 * [Protocol](protocol.md): pre-registration, development and confirmation samples.
 * [Operations](operations.md): daily run, monitoring, incident procedures.
+* [Compliance](compliance.md): every requirement of the specification, with its evidence.
+
+Beyond the core tests:
+
+* [Forecasting](forecasting.md): does roughness forecast daily volatility and volume? An
+  exact rough-volatility predictor against HAR, out of sample, with live daily forecasts.
+* [Change-point monitor](changepoints.md): CUSUM and Shiryaev–Roberts alarms when a pair's
+  `H0` leaves its development range.
+* [L2 collector](l2-collector.md): local order books of the perpetuals from the WebSocket
+  stream, sampled every second with every trade.
 
 "Production grade" here means: one command rebuilds every result from scratch, the
 pipeline updates itself every day, every module has its tests, everything runs in a

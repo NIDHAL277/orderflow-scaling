@@ -328,7 +328,26 @@ def test_controls_and_specification_curve(project: Project) -> None:
     curve = specification_curve(project, "development", ["spot"])
     labels = set(curve["variant"])
     assert {"baseline", "control estimators", "without top-5 pairs", "regime=high"} <= labels
+    assert "without pairs with a regime alarm" not in labels  # no monitor output yet
     assert curve.filter(pl.col("variant") == "baseline").height == 3
+    # a regime alarm for one pair inside the sample removes it from that variant
+    layout = DataLayout(project.data_dir)
+    alarm = pl.DataFrame(
+        {
+            "symbol": ["S01USDT", "S02USDT"],
+            "market": ["spot", "spot"],
+            "block_start": [dt.date(2025, 3, 3), dt.date(2026, 3, 2)],
+            "block_end": [dt.date(2025, 3, 16), dt.date(2026, 3, 15)],
+            "cusum_alarm": [True, True],
+            "sr_alarm": [False, False],
+        }
+    )
+    write_parquet_atomic(alarm, layout.root / "monitoring" / "changepoints.parquet")
+    curve = specification_curve(project, "development", ["spot"])
+    base = curve.filter(pl.col("variant") == "baseline")
+    cut = curve.filter(pl.col("variant") == "without pairs with a regime alarm")
+    assert cut.height == 3  # one per relation; S02 alarmed after the development sample
+    assert (cut["n_assets"] == base["n_assets"] - 1).all()
     assert DataLayout(project.data_dir).robustness_file("development").exists()
 
 

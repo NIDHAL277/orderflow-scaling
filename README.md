@@ -15,6 +15,24 @@ the one measured on volatility ([docs/forecasting.md](docs/forecasting.md)).
 > **Result:** *pending — the confirmatory tests run on the frozen confirmation sample
 > (2025-11-01 → 2026-10-31) after the tags `prereg-v1` and `config-frozen`.*
 
+**At a glance**
+
+* **Data**: 24 months of every Binance trade for 60 pairs, spot and USD-M perpetuals
+  (Binance Vision), each file SHA-256-verified and validated against the klines, reduced to
+  additive daily statistics; a 4.3 M-trade crash day reduces in 14 s. Five years of
+  1-minute klines for daily volatility and volume.
+* **Statistics**: four exponents per pair; estimators chosen by a pre-registered simulation
+  study (82 cells × 200 replications, noise included); block bootstrap synchronized across
+  pairs and calibrated for long memory; Deming regression, joint Wald tests, Holm.
+* **Protocol in code**: no estimate on real data before the git tag `prereg-v1`, no
+  confirmatory run before `config-frozen` with an unchanged configuration.
+* **Forecasting**: an exact rough-volatility predictor against HAR, Diebold–Mariano and
+  model confidence set, out of sample; live daily forecasts with a scored track record.
+* **Production**: daily Docker pipeline (late and re-published files handled), read-only
+  API, dashboard, Healthchecks, change-point alarms on `H0`, a WebSocket L2 collector.
+* **Quality**: `mypy --strict`, ruff, 217 tests (92 % coverage), MkDocs site,
+  14 architecture decision records, incident notes.
+
 <!-- Key figure, rebuilt by `make report`: paper/figures/fig2_h1_hvol.pdf -->
 
 ## Reproduce
@@ -94,18 +112,19 @@ perpetuals from the WebSocket diff-depth stream (Binance's sequence rules, resyn
 gap) and records 1-second books and every trade to hourly Parquet files, for a future
 propagator model ([docs/l2-collector.md](docs/l2-collector.md)).
 
-## Status (2026-11-09)
+## Status (2026-11-10)
 
 | Phase | State |
 |---|---|
 | P0 Framing | done: repository, CI, tooling, pre-registration draft, literature check ([docs](docs/literature-watch.md), monthly arXiv watch) |
 | P1 Ingestion and reduction | done and hardened on real data: statistics = naive computation to 3.5e-15; a BTCUSDT perpetual day of 4.3 M trades (2025-10-10 crash) reduced in 13.9 s with 1.4 GB peak memory (target < 60 s, < 8 GB) |
-| P2 Simulation and estimators | full study (365 days, 200 replications, 82 cells) running; estimator choice and CI calibration then follow mechanically from the pre-registered rule (`make decide`), before the tag `prereg-v1` |
+| P2 Simulation and estimators | full study (365 days, 200 replications, 82 cells): H0 and H_vol cells done, H_σ and δ cells running; estimator choice and CI calibration then follow mechanically from the pre-registered rule (`make decide`), before the tag `prereg-v1` |
 | P3 Full universe, development | universe: 60 pairs, 59 perpetuals (PAXG and WBTC left out by decision); real 24-month backfill (2024-11-01 → 2026-10-31) running, then the 5-year daily-volatility history and the O1 report (`make quality`) |
 | P4 Confirmation and tests | after the tags `prereg-v1` and `config-frozen` |
 | P5 Production | Docker, compose, Caddy, cron, Healthchecks, R2 backups; the daily run replays late files and applies re-published ones; deployment on a VM pending |
 | P6 Report | LaTeX paper and 10-slide deck built from the generated figures; results pending |
-| Forecasting (F) | models, evaluation, API, dashboard page and report table done and validated on simulated rough volatility; real-data runs after `prereg-v1` (development) and `config-frozen` (confirmation) |
+| Forecasting (F) | models, evaluation, live forecasts, API, dashboard page and report table done and validated on simulated rough volatility; real-data runs after `prereg-v1` (development) and `config-frozen` (confirmation) |
+| Spec extensions | change-point monitor of `H0` and L2 collector done (collector checked live: 2,446 trades, 0 resyncs in 20 s); kdb+/q and other exchanges not started |
 
 What the real data changed is recorded as decisions and incident notes:
 [ADR 0009](docs/adr/0009-ohlc-check-in-ticks.md) (OHLC check),
@@ -113,13 +132,14 @@ What the real data changed is recorded as decisions and incident notes:
 [ADR 0011](docs/adr/0011-five-year-volatility-history.md) (5-year history),
 [ADR 0012](docs/adr/0012-trade-id-continuity.md) (trade-id continuity),
 [ADR 0013](docs/adr/0013-forecasting-extension.md) (forecasting),
+[ADR 0014](docs/adr/0014-l2-collector.md) (L2 collector),
 [incidents](docs/incidents/README.md).
 
 ## Repository
 
 ```
 config/       universe, estimation grids, pre-registration (versioned, frozen by tags)
-src/ofs/      ingest, validate, reduce, simulate, estimators, inference, forecast, report, api, cli
+src/ofs/      ingest, validate, reduce, simulate, estimators, inference, forecast, collect, report, api, cli
 dashboards/   Streamlit (tests, asset sheet, forecasting, pipeline health, simulation)
 tests/        unit, property (Hypothesis), simulation (known-H recovery)
 paper/        LaTeX working paper and slides, figures and tables generated by `make report`

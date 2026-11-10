@@ -2,7 +2,8 @@
 
 Every result is re-run on: windows Delta, tau ranges, with/without
 deseasonalisation, spot vs perpetual, high/low volatility regimes, without the
-5 most liquid pairs, without days with extreme jumps, block lengths, and the
+5 most liquid pairs, without the pairs whose change-point monitor of H0 alarmed during
+the sample, without days with extreme jumps, block lengths, and the
 control estimators. Robustness tests are descriptive: they are not corrected
 for multiplicity, all of them are shown, sorted, with their CI.
 """
@@ -94,6 +95,21 @@ def with_history(
     )
 
 
+def regime_alarms(layout: DataLayout, start: dt.date, end: dt.date, market: str) -> set[str]:
+    """Pairs whose change-point monitor of H0 alarmed in a block overlapping [start, end]."""
+    path = layout.root / "monitoring" / "changepoints.parquet"
+    if not path.exists():
+        return set()
+    cps = pl.read_parquet(path)
+    hits = cps.filter(
+        (pl.col("market") == market)
+        & (pl.col("cusum_alarm") | pl.col("sr_alarm"))
+        & (pl.col("block_end") >= start)
+        & (pl.col("block_start") <= end)
+    )
+    return set(hits["symbol"].to_list())
+
+
 def specification_curve(
     project: Project, sample: Sample, markets: Sequence[str] = ("spot", "um")
 ) -> pl.DataFrame:
@@ -109,10 +125,26 @@ def specification_curve(
     rows: list[dict[str, Any]] = []
     k = project.estimation.inference.bootstrap.sd_inflation
     case = partial(_case, inflation=k)
+    period = project.estimation.split.period(sample)
+    est_symbols = sorted(set(est["symbol"].to_list()))
     for market in markets:
+        flagged = regime_alarms(layout, period.start, period.end, market)
         for rel in RELATIONS:
             x0, y0 = primary["H0"], primary[rel.exponent]
             rows.append(case(est, boot, rel, x0, y0, market, "baseline"))
+            if flagged:  # pre-registration §8: drop pairs whose H0 changed regime
+                rows.append(
+                    case(
+                        est,
+                        boot,
+                        rel,
+                        x0,
+                        y0,
+                        market,
+                        "without pairs with a regime alarm",
+                        [s for s in est_symbols if s not in flagged],
+                    )
+                )
             rows.append(
                 case(
                     est,
