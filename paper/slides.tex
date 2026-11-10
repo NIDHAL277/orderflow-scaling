@@ -76,9 +76,9 @@ impact on crypto markets}
     \column{0.42\textwidth}
     \small
     \begin{itemize}
-      \item $\Hz$: mixed fBm on aggregated variances; control: sign autocorrelation.
-      \item $H_{\mathrm{vol}}$: moments of the volume rate / autocovariance GMM.
-      \item $H_\sigma$: GJR moments / Whittle on daily RV.
+      \item $\Hz$: mixed fBm on aggregated variances; control: quadratic-variation ratio.
+      \item $H_{\mathrm{vol}}$: autocovariance GMM / moments of the volume rate.
+      \item $H_\sigma$: GJR moments / Whittle on daily RV --- \alert{limited}: neither within 0.02.
       \item $\delta$: same-side runs (proxy, exploratory).
     \end{itemize}
     Pre-registered rule: an estimator is used only where its simulated bias is below 0.02.

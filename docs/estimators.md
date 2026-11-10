@@ -73,4 +73,22 @@ at 20 days, 1.13 at 120), and longer blocks do not help (1.38 with 30-day blocks
 days: fewer blocks make the bootstrap itself noisier). The `full` profile therefore
 simulates 365-day samples, like the real ones, and reports `sd_ratio` per cell.
 
+### Full profile (2026-11-10): the pre-registered decisions
+
+82 cells, 200 replications of 365 days, 199 bootstrap draws (`ofs simulate decide --profile
+full`; worst |bias| over the cells of the plausible region, noise/signal ≤ 1):
+
+| Exponent | Candidates (worst \|bias\|) | Decision |
+|---|---|---|
+| H0 | mixed fBm 0.001 | principal |
+| H0 control | sign ACF 0.033, quadratic-variation ratio 0.000 | QV ratio replaces the sign ACF |
+| H_vol | autocovariance GMM 0.014, moments 0.079 | GMM principal, moments control |
+| H_σ | GJR 0.121, Whittle 0.030 (H_σ ∈ [0.05, 0.15]) | neither within 0.02: GJR kept, **H2 reported as limited** |
+| δ | proxy A 0.000 | principal |
+| calibration | median true sd / bootstrap sd over 39 cells | k = 1.14 (H0 coverage 72-94 % raw, 80-96 % with k) |
+
+The H_σ result is itself a finding: on one year of daily data, roughness near `H = 0.1`
+cannot be estimated within 0.02 by either estimator; the five-year history variant
+(`daily_5y`) of the specification curve shows how much a longer sample helps.
+
 The definitive tables come from `make sim` (profile `full`) and are part of the report.

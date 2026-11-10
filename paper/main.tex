@@ -252,7 +252,13 @@ region, otherwise the alternative is, and the bootstrap spread is calibrated by 
 ratio of the true to the bootstrap standard deviation over those cells,
 $k=\sdInflation$; coverage is then assessed on the calibrated intervals. A first, smaller
 study had shown why: under long memory the block bootstrap underestimates the sampling
-spread on short samples. Table~\ref{tab:simulation} and Figure~\ref{fig:fig5_bias_maps.pdf}
+spread on short samples. The full study settled the choices: the autocovariance GMM is
+principal for $\Hv$ (worst bias 0.014 against 0.079 for the moments); the quadratic-variation
+ratio replaces the sign autocorrelation as control of $\Hz$ (whose bias reaches 0.033); for
+$\Hs$ neither GJR ($+0.121$) nor Whittle (0.030) stays within 0.02 when
+$\Hs\in[0.05,0.15]$, so GJR is kept as the rule prescribes and the volatility relation is
+reported as limited by estimator reliability; $k=\sdInflation$.
+Table~\ref{tab:simulation} and Figure~\ref{fig:fig5_bias_maps.pdf}
 report bias, RMSE and coverage for every estimator, including the cells where it fails.
 \tableif{simulation.tex}
 \figureif{fig5_bias_maps.pdf}{0.95}{Bias of the principal and control estimators in

@@ -2,9 +2,10 @@
 
 | | |
 |---|---|
-| Status | **DRAFT** — becomes binding when committed and tagged `prereg-v1` (spec §9, step 0) |
+| Status | **Registered** — binding from the git tag `prereg-v1` (spec §9, step 0) |
 | Author | nidhal.V |
 | Drafted | 2026-11-08 |
+| Registered | 2026-11-10, after the full simulation study and before any estimate on real data |
 | Theory tested | Muhle-Karbe, Ouazzani Chahdi, Rosenbaum & Szymanski, *A unified theory of order flow, market impact, and volatility*, arXiv:2601.23172 (v2) |
 | Configuration | `config/estimation.yaml` (hash stamped on every result as `config_version`) |
 
@@ -77,7 +78,7 @@ A result counts only if the principal and the control estimator agree within 0.0
 
 | Exponent | Principal | Control | Reported, not tested |
 |---|---|---|---|
-| `H0` | mixed fBm on aggregated variances, `Var(X_{t+τ} − X_t) = σ1² τ^{2H0} + σ2² τ`, weighted NLS (weights ∝ 1/τ), τ log-spaced from Δ = 10 s to 4 h; fractional part required to exceed twice the sampling error of `Var` at 4 h, else `H0 = 1/2` | sign autocorrelation in event time, `C(ℓ) ~ ℓ^{-γ}`, `H0 = 1 − γ/2`, ℓ ∈ [10, 10⁴], significant leading bins only | simple fBm slope (bias reproduction), DFA-2, quadratic-variation ratio on (Δ, 2Δ, 4Δ) (the paper's estimator), all windows Δ |
+| `H0` | mixed fBm on aggregated variances, `Var(X_{t+τ} − X_t) = σ1² τ^{2H0} + σ2² τ`, weighted NLS (weights ∝ 1/τ), τ log-spaced from Δ = 10 s to 4 h; fractional part required to exceed twice the sampling error of `Var` at 4 h, else `H0 = 1/2` | sign autocorrelation in event time, `C(ℓ) ~ ℓ^{-γ}`, `H0 = 1 − γ/2`, ℓ ∈ [10, 10⁴], significant leading bins only — **replaced by the quadratic-variation ratio by the §4.1 rule** (outcome below) | simple fBm slope (bias reproduction), DFA-2, quadratic-variation ratio on (Δ, 2Δ, 4Δ) (the paper's estimator), all windows Δ |
 | `H_vol` | see §4.1 | see §4.1 | autocovariance-GMM of increments truncated at 3 sd (the paper's method), paper bins 5–12 s |
 | `H_σ` | see §4.1 | see §4.1 | p-variation (Cont & Das), intraday 15-min horizon, TSRV |
 | `δ` | proxy A: runs of same-sign trades < 5 s apart, `E[I | Q] = A Q^δ` on log-binned notional | proxy A on run duration (time exponent, as in the theory) | proxy A at gaps 1 s and 30 s; proxy B aggregate impact (Patzelt & Bouchaud) |
@@ -131,7 +132,19 @@ for `H_σ`), to be superseded by the full study:
 | `H_σ` | Whittle, daily RV | RMSE 0.10-0.21 on 120 days | 72-100 % |
 | `δ` | proxy A | ≈ 0 (RMSE ≤ 0.002) | not informative at this precision |
 
-> Outcome of the rule: *to be filled in from `make sim` before `prereg-v1`.*
+> **Outcome of the rule** (`ofs simulate decide --profile full`, reading `bias_then_calibration`, tolerance |bias| < 0.02):
+>
+> * `Hsigma`: principal **gjr**, control whittle_fukasawa (no estimator met the bias rule: default kept, reported as limited) (true in [0.05, 0.15], nsr <= 1.0; gjr: worst |bias| 0.121; whittle_fukasawa: worst |bias| 0.030).
+> * `Hvol`: principal **acov_gmm**, control moments (true in [0.1, 0.4], nsr <= 1.0; acov_gmm: worst |bias| 0.014; moments: worst |bias| 0.079).
+> * `H0` control: **qv_ratio** (sign ACF worst |bias| 0.033 at H0 in [0.7, 0.85]; quadratic-variation ratio 0.000).
+> * Calibration (§5): `sd_inflation` k = **1.14** (median sd ratio over 39 cells of the principal estimators in the plausible region).
+>
+> | Exponent | Principal | Worst \|bias\| | Coverage raw | Coverage with k |
+> |---|---|---|---|---|
+> | `H0` | mixed_fbm | 0.001 | 72-94 % | 80-96 % |
+> | `delta` | proxy_a | 0.000 | 30-96 % | 38-98 % |
+> | `Hsigma` | gjr | 0.121 | 0-12 % | 0-17 % |
+> | `Hvol` | acov_gmm | 0.005 | 28-94 % | 50-98 % |
 
 ### 4.2 Grids (from `config/estimation.yaml`)
 

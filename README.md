@@ -82,13 +82,18 @@ flowchart LR
 
 | Exponent | Principal estimator | Control |
 |---|---|---|
-| `H0` | mixed fBm on aggregated variance (weighted NLS) | sign autocorrelation in event time |
-| `H_vol` | moments of the volume rate | moments of log-rate (autocovariance-GMM reported) |
-| `H_σ` | GJR moments on daily RV | Whittle (Fukasawa–Takabatake–Westphal) |
+| `H0` | mixed fBm on aggregated variance (weighted NLS) | quadratic-variation ratio (sign ACF reported) |
+| `H_vol` | autocovariance GMM of truncated increments (the paper's method) | moments of the volume rate |
+| `H_σ` | GJR moments on daily RV — *limited*: no estimator meets the bias rule | Whittle (Fukasawa–Takabatake–Westphal) |
 | `δ` | runs of same-sign trades, `E[I | Q] ~ Q^δ` | same, on run duration |
 
-Final principal/control choices for `H_vol` and `H_σ` follow the simulation rule of
-[config/preregistration.md](config/preregistration.md) §4.1.
+The roles were fixed by the pre-registered rule applied to the full simulation study
+(82 cells × 200 replications of 365 days, [§4.1](config/preregistration.md)): the paper's
+autocovariance GMM is principal for `H_vol` (worst bias 0.014, moments 0.079); the
+quadratic-variation ratio replaces the sign ACF as control of `H0` (0.033); for `H_σ`
+neither GJR (+0.121) nor Whittle (0.030) stays within 0.02 near `H_σ ∈ [0.05, 0.15]`, so
+GJR is kept and the volatility relation is reported as limited by estimator reliability.
+Bootstrap intervals are widened by the calibrated factor k = 1.14.
 
 **Forecasting (extension F).** Rolling out-of-sample forecasts of the average daily
 realised variance and traded volume over the next 1, 5 and 22 days, from the 5-year daily
@@ -116,11 +121,11 @@ propagator model ([docs/l2-collector.md](docs/l2-collector.md)).
 
 | Phase | State |
 |---|---|
-| P0 Framing | done: repository, CI, tooling, pre-registration draft, literature check ([docs](docs/literature-watch.md), monthly arXiv watch) |
+| P0 Framing | done: repository, CI, tooling, literature check ([docs](docs/literature-watch.md), monthly arXiv watch); pre-registration tagged `prereg-v1` on 2026-11-10 |
 | P1 Ingestion and reduction | done and hardened on real data: statistics = naive computation to 3.5e-15; a BTCUSDT perpetual day of 4.3 M trades (2025-10-10 crash) reduced in 13.9 s with 1.4 GB peak memory (target < 60 s, < 8 GB) |
-| P2 Simulation and estimators | full study (365 days, 200 replications, 82 cells): H0 and H_vol cells done, H_σ and δ cells running; estimator choice and CI calibration then follow mechanically from the pre-registered rule (`make decide`), before the tag `prereg-v1` |
+| P2 Simulation and estimators | done: full study (82 cells, 200 replications of 365 days); estimator roles and calibration k = 1.14 fixed by the pre-registered rule; `H_σ` flagged as limited |
 | P3 Full universe, development | universe: 60 pairs, 59 perpetuals (PAXG and WBTC left out by decision); real 24-month backfill (2024-11-01 → 2026-10-31) running, then the 5-year daily-volatility history and the O1 report (`make quality`) |
-| P4 Confirmation and tests | after the tags `prereg-v1` and `config-frozen` |
+| P4 Confirmation and tests | development estimates once the backfill ends; confirmation after the tag `config-frozen` |
 | P5 Production | Docker, compose, Caddy, cron, Healthchecks, R2 backups; the daily run replays late files and applies re-published ones; deployment on a VM pending |
 | P6 Report | LaTeX paper and 10-slide deck built from the generated figures; results pending |
 | Forecasting (F) | models, evaluation, live forecasts, API, dashboard page and report table done and validated on simulated rough volatility; real-data runs after `prereg-v1` (development) and `config-frozen` (confirmation) |

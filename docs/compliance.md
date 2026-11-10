@@ -13,11 +13,11 @@ decision or an action of the project owner is needed.
 | Binance Vision aggTrades spot + USD-M, free, no key | done | [data sources](data-sources.md) (survey of alternatives), `ofs.ingest` |
 | 60 pairs, 24 months, ≥ 95 % days, perpetual when it exists, renames | done | `config/universe.yaml` (60 pairs, 59 perpetuals, availability on aggTrades), `config/symbol_renames.yaml` (dates checked on the S3 listing) |
 | Up to 5 years for daily volatility where the history exists | done (data queued) | `ofs history`, sample `history` ([ADR 0011](adr/0011-five-year-volatility-history.md)) |
-| Universe frozen and dated before results | owner | draft until the owner's go-ahead; exclusions of PAXG and WBTC decided and recorded (pre-registration §2) |
+| Universe frozen and dated before results | done | frozen on 2026-11-10 with the tag `prereg-v1` (content built 2026-11-09; exclusions of PAXG and WBTC decided by the owner and recorded in the pre-registration §2) |
 | §6.4 blocking controls: SHA-256, ids, prices, OHLC 0.01 %, jumps, Binance corrections | done | `ofs.validate.checks`; OHLC robust to feed conventions ([ADR 0009](adr/0009-ohlc-check-in-ticks.md)); continuity on missing rows ([ADR 0012](adr/0012-trade-id-continuity.md)); corrections: `ofs recheck` ([ADR 0010](adr/0010-catch-up-and-corrections.md)) |
 | §6.5 Parquet partitioned by pair and month; sizes measured | done | per-day files in `symbol=/market=/month=` partitions; about 60 MB a day measured ([operations](operations.md)) |
 | O1: 60 pairs × 24 months, checksums, zero unexplained missing day | running | backfill in progress; `ofs quality` / `make quality`, dashboard health page |
-| O2: bias < 0.02, coverage 93-97 % on simulated data | running | full study (82 cells, 365 days, 200 replications); `make decide` applies the pre-registered rule |
+| O2: bias < 0.02, coverage 93-97 % on simulated data | done, with documented failures | full study (82 cells, 200 replications of 365 days): principal estimators within 0.02 except `H_σ` (GJR +0.121, Whittle 0.030 near H = 0.05-0.15: H2 limited); coverage after calibration k = 1.14 in [80 %, 96 %] for `H0`; failing cells shown in the report (pre-registration §4.1) |
 | O3: four exponents with bootstrap CIs per pair | after the tag | `ofs estimate` (synchronized bootstrap, B = 999) |
 | O4: tests H1-H3 reported, rejections included | after the tags | `ofs test` (Deming, Wald, Holm, decision rule) |
 | O5: daily pipeline, container, tests, CI, online dashboard | done (deployment: owner) | `ofs daily`, Dockerfile, compose, CI; a VM and a public URL need the owner |
@@ -41,8 +41,8 @@ decision or an action of the project owner is needed.
 
 | Step | State |
 |---|---|
-| 0. Pre-registration committed and tagged `prereg-v1` before any estimator on real data | owner — draft ready; the code refuses to estimate before the tag |
-| 1. Simulation study with failure zones in the report | running — rule of §4.1 amended before any full result (owner's decision) |
+| 0. Pre-registration committed and tagged `prereg-v1` before any estimator on real data | done — tag `prereg-v1` (2026-11-10), after the full simulation study; the code refused any estimate before it |
+| 1. Simulation study with failure zones in the report | done — full study, rule of §4.1 applied (`H_σ` limited); failure zones in the report |
 | 2. Development then confirmation, `config-frozen` | after step 0 — enforced by `ofs.protocol` |
 | 3. Shuffled signs, synthetic false universes, minimal detectable effect | done — `ofs.inference.power` |
 | 4. Robustness as a specification curve | done — `ofs.inference.robustness`, 5-year volatility variant included |

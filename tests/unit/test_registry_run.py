@@ -90,8 +90,12 @@ def test_registry_roles(project: Project) -> None:
         roles = [e.role for e in reg if e.exponent == exponent]
         assert roles.count("primary") == 1 and roles.count("control") == 1, exponent
     assert all(not e.bootstrap for e in reg if e.role == "diagnostic")
-    assert role_of(reg, "Hsigma", "primary").name == "gjr"
-    assert role_of(reg, "H0", "control").name == "sign_acf"
+    # roles follow the configuration, as fixed by the simulation study (pre-registration §4.1)
+    cfg = project.estimation
+    assert role_of(reg, "Hsigma", "primary").name == cfg.hsigma.primary_estimator
+    assert role_of(reg, "Hsigma", "control").name == cfg.hsigma.control_estimator
+    assert role_of(reg, "Hvol", "primary").name == cfg.hvol.primary_estimator
+    assert role_of(reg, "H0", "control").name == cfg.h0.concordance_control
     keys = [e.key for e in reg]
     assert len(keys) == len(set(keys))
     with pytest.raises(KeyError):
@@ -187,7 +191,7 @@ def test_replicates_modes(stats_project: tuple[Project, list[dt.date]]) -> None:
     assert replicates(whittle, f, f.meta, plan, mask=np.ones(N_DAYS)) is None
     reps = replicates(whittle, f, f.meta, plan)
     assert reps is not None and reps.shape == (10,)
-    moments = next(e for e in reg if e.name == "moments" and e.role == "primary")
+    moments = next(e for e in reg if e.name == "moments" and e.role in ("primary", "control"))
     fm = moments.features(bundle, days)
     r = replicates(moments, fm, fm.meta, plan, "block=3", mask=np.ones(N_DAYS))
     assert r is not None and np.isfinite(r).mean() > 0.8

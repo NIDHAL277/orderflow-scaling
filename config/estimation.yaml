@@ -10,7 +10,7 @@ h0:
   model: mixed_fbm
   tau_grid: {min_s: 1, max_s: 14400, points: 30, spacing: log}
   controls: [single_fbm, sign_acf, dfa2, qv_ratio]
-  concordance_control: sign_acf    # "a result counts only if both estimators agree within 0.05"
+  concordance_control: qv_ratio    # "a result counts only if both estimators agree within 0.05"
   sign_acf_max_lag: 10000
   sign_acf_lag_bins: 40
   sign_acf_fit_lags: {min: 10, max: 10000, points: 2}
@@ -28,8 +28,8 @@ hvol:
   truncate_sd: 3.0                 # increments truncated at 3 sd, as in the paper (App. C)
   # Roles are fixed in config/preregistration.md from the simulation study (P2),
   # before the tag prereg-v1. Spec default: moments principal, log-moments control.
-  primary_estimator: moments       # moments | acov_gmm
-  control_estimator: moments_log   # moments_log | acov_gmm | moments
+  primary_estimator: acov_gmm       # moments | acov_gmm
+  control_estimator: moments   # moments_log | acov_gmm | moments
 
 hsigma:
   primary: daily                   # theory predicts the *extraday* roughness (paper, Remark 4.2)
@@ -59,7 +59,7 @@ impact:
 
 inference:
   bootstrap: {kind: stationary, mean_block_days: 7, sensitivity_days: [3, 14], replications: 999, ci_method: percentile,
-              sd_inflation: 1.0}   # set from `make sim` (sd_ratio at 365 days) before prereg-v1
+              sd_inflation: 1.14}   # set from `make sim` (sd_ratio at 365 days) before prereg-v1
   regression: deming
   alpha: 0.01
   multiplicity: holm

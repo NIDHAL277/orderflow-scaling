@@ -1,8 +1,8 @@
 # Universe built (draft: review renames, then rerun with --freeze) on 2026-11-09 by `ofs universe` (spec §6.3).
 # Do not edit after results have been seen; record any change in the report.
 version: 1
-status: draft
-frozen_at: '2026-11-09'
+status: frozen
+frozen_at: '2026-11-10'
 selection:
   quote: USDT
   period:

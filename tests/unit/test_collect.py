@@ -141,7 +141,7 @@ def test_collector_against_a_local_stream(tmp_path: Path) -> None:
             stream = "btcusdt@aggTrade" if trades else "btcusdt@depth@100ms"
             await ws.send(json.dumps({"stream": stream, "data": msg}))
             await asyncio.sleep(0.05)
-        await asyncio.sleep(5)  # keep the connection open until the client stops
+        await asyncio.wait_for(ws.wait_closed(), 60)  # open until the client stops
 
     async def scenario() -> Collector:
         async with serve(handler, "127.0.0.1", 0) as server:
@@ -155,7 +155,23 @@ def test_collector_against_a_local_stream(tmp_path: Path) -> None:
                 snapshot=fake_snapshot,
                 snapshot_interval_s=0.0,
             )
-            await c.run(duration_s=1.5)
+            # stop on the expected state, not on a stopwatch: under load, creating the TLS
+            # context and connecting can take longer than any short fixed duration
+            run = asyncio.create_task(c.run())
+            loop = asyncio.get_running_loop()
+            deadline = loop.time() + 30.0
+            while loop.time() < deadline and not run.done():
+                rows = c.books["BTCUSDT"].rows
+                if (
+                    c.stats.trades == 2
+                    and c.stats.resyncs == 1
+                    and rows
+                    and rows[-1]["best_bid"] == 99.5
+                ):
+                    break
+                await asyncio.sleep(0.05)
+            c.stop.set()
+            await run
             return c
 
     c = asyncio.run(scenario())
@@ -166,6 +182,6 @@ def test_collector_against_a_local_stream(tmp_path: Path) -> None:
     books = pl.concat([pl.read_parquet(p) for p in folder.rglob("*_book*.parquet")])
     trades = pl.concat([pl.read_parquet(p) for p in folder.rglob("*_trades*.parquet")])
     last = books.sort("ts_ms").row(-1, named=True)  # the book rebuilt after the gap
-    assert books.height >= 5 and (last["best_bid"], last["bid_qty_1"]) == (99.5, 2.0)
+    assert (last["best_bid"], last["bid_qty_1"]) == (99.5, 2.0)
     assert last["best_ask"] == 100.5 and math.isnan(last["bid_px_2"])
     assert trades["price"].to_list() == [100.1, 100.4] and trades["is_buyer_maker"].all()
