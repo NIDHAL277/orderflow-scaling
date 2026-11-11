@@ -138,12 +138,13 @@ def process_group(
             stage_event(
                 "reduce_pass1", "error", symbol=asset, market=market, day=day, error=repr(exc)[:300]
             )
-    if days:
-        start, _ = window_days(min(days), project.estimation.seasonality_window_days)
-        seasonal = reducer.load_seasonal(asset, market, start, max(days) + dt.timedelta(days=7))
-        for day in days:
-            if not reducer.is_reduced(asset, market, day):
-                continue
+    reduced = [d for d in days if reducer.is_reduced(asset, market, d)]
+    pending = [d for d in reduced if not reducer.pass2_done(asset, market, d)]
+    summary.counts["pass2_skipped"] += len(reduced) - len(pending)
+    if pending:  # the seasonal profile is read only when a day still needs pass 2
+        start, _ = window_days(min(pending), project.estimation.seasonality_window_days)
+        seasonal = reducer.load_seasonal(asset, market, start, max(pending) + dt.timedelta(days=7))
+        for day in pending:
             try:
                 summary.counts[f"pass2_{reducer.pass2(asset, market, day, seasonal)}"] += 1
             except (MissingRawFileError, ValueError) as exc:
