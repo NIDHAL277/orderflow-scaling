@@ -82,7 +82,17 @@ before any estimate on real data.
     `uncentred`.
   * The simulation study's H0 cells are re-run with the new principal, and the
     pre-registered acceptance rule (|bias| ≤ 0.02 and calibrated coverage in the plausible
-    region) applies to it. Outcome: *to be added when the re-run finishes, before the tag.*
+    region) applies to it.
+  * **Outcome** (2026-11-12, `ofs simulate decide --profile full`, 20 H0 cells re-run, the
+    other 62 cells unchanged): in the plausible region (H0 0.7-0.8, noise/signal ≤ 1,
+    9 cells) `mixed_fbm_vc` has a worst |bias| of 0.0005. Its raw coverage is 89-96 %,
+    against 72-94 % for the uncentred principal.
+  * **Consequence for k.** The rule's calibration factor, the median sd ratio over the
+    principals' 39 plausible cells, becomes k = 1.06 (it was 1.14).
+    `inference.bootstrap.sd_inflation` is set accordingly, by the rule and not by choice.
+    With k, the H0 coverage is 91.5-98 %.
+  * The H0 control is still the quadratic-variation ratio (worst bias 0.013, now on the
+    centred flow).
 * **Why.** The development data showed that the uncentred estimator counts a day-level
   imbalance as long memory.
   * In simulation, memoryless signs with a 5 % daily imbalance read as `H0 ≈ 0.98`.

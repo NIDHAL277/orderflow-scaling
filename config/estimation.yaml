@@ -59,7 +59,7 @@ impact:
 
 inference:
   bootstrap: {kind: stationary, mean_block_days: 7, sensitivity_days: [3, 14], replications: 999, ci_method: percentile,
-              sd_inflation: 1.14}   # set from `make sim` (sd_ratio at 365 days) before prereg-v1
+              sd_inflation: 1.06}   # set by the §4.1 rule from `make sim` (median sd_ratio at 365 days); 1.14 at prereg-v1, 1.06 after the H0 re-run of deviation D4
   regression: deming
   alpha: 0.01
   multiplicity: holm

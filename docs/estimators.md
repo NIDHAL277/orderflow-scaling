@@ -100,7 +100,7 @@ full`; worst |bias| over the cells of the plausible region, noise/signal ≤ 1):
 | H_vol | autocovariance GMM 0.014, moments 0.079 | GMM principal, moments control |
 | H_σ | GJR 0.121, Whittle 0.030 (H_σ ∈ [0.05, 0.15]) | neither within 0.02: the rule kept GJR; deviation D1 makes Whittle principal; **H2 reported as limited** |
 | δ | proxy A 0.000 | principal |
-| calibration | median true sd / bootstrap sd over 39 cells | k = 1.14 (H0 coverage 72-94 % raw, 80-96 % with k) |
+| calibration | median true sd / bootstrap sd over 39 cells | k = 1.14 at registration (H0 coverage 72-94 % raw, 80-96 % with k); k = 1.06 after the volume-centred H0 of D4 (H0 bias 0.0005, coverage 89-96 % raw, 91.5-98 % with k) |
 
 Controls that fail the bias rule (moments for H_vol, GJR for H_σ) are reported but do not
 decide whether a result counts (deviation D2, [config/deviations.md](https://github.com/nidhal-v/orderflow-scaling/blob/main/config/deviations.md)).

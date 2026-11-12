@@ -50,15 +50,16 @@ deleted after reduction (the 24 months would not fit otherwise), and a block of 
 the change-point monitor is one fit of 14 summed rows. Code: `ofs.reduce`,
 `ofs.estimators.base.Features`, ADR 0004.
 
-## 4. Why a synchronized block bootstrap, and why widen it by k = 1.14?
+## 4. Why a synchronized block bootstrap, and why widen it by k?
 
 Days are resampled by blocks (stationary bootstrap, mean 7 days) because one-day blocks
 would destroy the long memory being measured; the *same* resampled days are applied to
 every pair, because crypto pairs move together and the cross-sectional test must see that
 correlation. Under long memory, the block bootstrap still underestimates the sampling
 spread on one-year samples; the full simulation measured the ratio of true to bootstrap
-standard deviation, and its median over the principal estimators' plausible cells (1.14)
-widens every interval. Code: `ofs.inference.bootstrap`, `ofs.simulate.decisions`.
+standard deviation, and its median over the principal estimators' plausible cells widens
+every interval: 1.14 at registration, 1.06 since the volume-centred `H0` (deviation D4),
+whose intervals are better calibrated. Code: `ofs.inference.bootstrap`, `ofs.simulate.decisions`.
 
 ## 5. Why simulate before touching real data, and what did it change?
 

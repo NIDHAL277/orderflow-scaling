@@ -93,11 +93,18 @@ autocovariance GMM is principal for `H_vol` (worst bias 0.014, moments 0.079); t
 quadratic-variation ratio replaces the sign ACF as control of `H0` (0.033); for `H_σ`
 neither GJR (+0.121) nor Whittle (0.030) stays within 0.02 near `H_σ ∈ [0.05, 0.15]`, and
 the volatility relation is reported as limited by estimator reliability. Bootstrap
-intervals are widened by the calibrated factor k = 1.14. Two documented deviations,
-decided before any estimate on real data ([config/deviations.md](config/deviations.md)):
-Whittle rather than GJR is principal for `H_σ` (the rule's fallback kept the more biased
-one), and controls that fail the simulation's bias rule are reported without deciding
-whether a result counts.
+intervals are widened by the calibrated factor k (1.06 since deviation D4). Four documented
+deviations ([config/deviations.md](config/deviations.md)). Two were decided before any
+estimate on real data:
+* D1: Whittle rather than GJR is principal for `H_σ` (the rule's fallback kept the more
+  biased one).
+* D2: controls that fail the simulation's bias rule are reported without deciding whether
+  a result counts.
+
+Two were decided on the development year, before the confirmation year was touched:
+* D3: the shuffled-sign negative control could not return 1/2 on real data, and is fixed.
+* D4: `H0` is now estimated on the order flow centred day by day in proportion to volume
+  (ADR 0015).
 
 **Forecasting (extension F).** Rolling out-of-sample forecasts of the average daily
 realised variance and traded volume over the next 1, 5 and 22 days, from the 5-year daily
@@ -128,7 +135,7 @@ propagator model ([docs/l2-collector.md](docs/l2-collector.md)).
 |---|---|
 | P0 Framing | done: repository, CI, tooling, literature check ([docs](docs/literature-watch.md), monthly arXiv watch); pre-registration tagged `prereg-v1` on 2026-11-10 |
 | P1 Ingestion and reduction | done and hardened on real data: statistics = naive computation to 3.5e-15; a BTCUSDT perpetual day of 4.3 M trades (2025-10-10 crash) reduced in 13.9 s with 1.4 GB peak memory (target < 60 s, < 8 GB) |
-| P2 Simulation and estimators | done: full study (82 cells, 200 replications of 365 days); estimator roles and calibration k = 1.14 fixed by the pre-registered rule; `H_σ` flagged as limited |
+| P2 Simulation and estimators | done: full study (82 cells, 200 replications of 365 days); estimator roles and calibration k fixed by the pre-registered rule (1.14, then 1.06 after the H0 re-run of D4); `H_σ` flagged as limited |
 | P3 Full universe, development | universe: 60 pairs, 59 perpetuals (PAXG and WBTC left out by decision); real 24-month backfill (2024-11-01 → 2026-10-31) running, then the 5-year daily-volatility history and the O1 report (`make quality`) |
 | P4 Confirmation and tests | development estimates once the backfill ends; confirmation after the tag `config-frozen` |
 | P5 Production | Docker, compose, Caddy, cron, Healthchecks, R2 backups; the daily run replays late files and applies re-published ones; deployment on a VM pending |
