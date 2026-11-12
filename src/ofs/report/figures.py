@@ -335,7 +335,11 @@ def forecast_ratios(tests: pl.DataFrame, path: Path) -> Path:
     if tests.height == 0:
         return _placeholder(path, "Forecasting", "run `ofs forecast` first")
     codes = [c for c in ("F1", "F2", "F3") if tests.filter(pl.col("hypothesis") == c).height]
-    fig, axes = plt.subplots(1, len(codes), figsize=(2.3 * len(codes) + 0.6, 2.4), squeeze=False)
+    # constrained layout: each panel has its own y scale, whose tick labels must not
+    # run into the neighbouring panel
+    fig, axes = plt.subplots(
+        1, len(codes), figsize=(2.3 * len(codes) + 0.6, 2.7), squeeze=False, layout="constrained"
+    )
     for ax, code in zip(axes[0], codes, strict=True):
         d = tests.filter(pl.col("hypothesis") == code)
         horizons = sorted(d["horizon"].unique().to_list())
@@ -354,12 +358,24 @@ def forecast_ratios(tests: pl.DataFrame, path: Path) -> Path:
                 colors=color,
                 lw=1.2,
             )
-            ax.scatter(x, m["ratio"].fill_null(np.nan).to_numpy(), color=color, s=14, zorder=3)
+            ax.scatter(
+                x,
+                m["ratio"].fill_null(np.nan).to_numpy(),
+                color=color,
+                s=14,
+                zorder=3,
+                label=style.MARKET_LABELS.get(market, market),
+            )
         ax.set_xticks(range(len(horizons)), [str(h) for h in horizons])
         ax.set_xlabel("horizon (days)")
         first = d.row(0, named=True)
-        ax.set_title(f"{code}: {first['model']} / {first['reference']}", fontsize=8)
+        look_ahead = "look_ahead" in d.columns and bool(d["look_ahead"].any())
+        title = f"{code}: {first['model']} / {first['reference']}"
+        ax.set_title(title + (" (look-ahead)" if look_ahead else ""), fontsize=8)
     axes[0, 0].set_ylabel("mean QLIKE ratio")
+    handles, labels = axes[0, 0].get_legend_handles_labels()
+    if handles:  # one legend for the markets, shared by the panels
+        fig.legend(handles, labels, loc="outside upper center", ncol=len(handles), fontsize=7)
     fig.savefig(path)
     plt.close(fig)
     return path
