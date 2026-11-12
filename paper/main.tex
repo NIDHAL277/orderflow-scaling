@@ -191,22 +191,28 @@ terms; one day of the BTCUSDT perpetual during the liquidation cascade of 2025-1
 Each exponent has a principal and a control estimator; a result is reported as such only
 when the two agree within 0.05.
 
-\paragraph{$\Hz$.} The principal estimator fits the mixed model
+\paragraph{$\Hz$.} The flow is first centred day by day in proportion to volume: each
+window loses its volume times the day's imbalance (net flow over volume), so that a
+day-level imbalance riding on bursts of activity is not read as memory (deviation D4;
+in simulation, memoryless signs with a 5\,\% daily imbalance read as $\Hz\approx0.98$
+without it). The principal estimator then fits the mixed model
 \[
 \E\bigl[(X_{t+\tau}-X_t)^2\bigr]=\sigma_1^2\,\tau^{2\Hz}+\sigma_2^2\,\tau
 \]
 by non-linear least squares on the aggregated variances, for $\tau$ from $\Delta$ to four
 hours, with weights proportional to $1/\tau$ (the inverse sampling variance under the
-Brownian null). The fractional part must explain, at four hours, more than twice the
-sampling error of the variance there; otherwise the flow is declared Brownian. The
-control is the event-time autocorrelation of signs, $C(\ell)\sim\ell^{-\gamma}$ with
-$\Hz=1-\gamma/2$, fitted on the leading lag bins that are significantly positive. We
-also report the slope of a simple fBm (which reproduces the bias, increasing with $\Delta$,
-noted by \citet{mocrs2026}), a detrended fluctuation analysis of order two
-\citep{peng1994}, and the quadratic-variation ratio on $(\Delta,2\Delta,4\Delta)$ used by
-\citet{mocrs2026}, in the spirit of the mixed-semimartingale estimators of
-\citet{chong2025}. As a negative control, the signs are permuted within each day, which
-must give $\Hz=1/2$.
+Brownian null). Both terms take their exact expected shape after the centring, which
+pins each day's path like a bridge. The fractional part must explain, at four hours,
+more than twice the sampling error of the variance there; otherwise the flow is declared
+Brownian. The control is the quadratic-variation ratio on $(\Delta,2\Delta,4\Delta)$
+used by \citet{mocrs2026}, in the spirit of the mixed-semimartingale estimators of
+\citet{chong2025}; the simulation study preferred it to the event-time autocorrelation
+of signs, $C(\ell)\sim\ell^{-\gamma}$ with $\Hz=1-\gamma/2$, which we report as a
+diagnostic with the slope of a simple fBm (which reproduces the bias, increasing with
+$\Delta$, noted by \citet{mocrs2026}) and a detrended fluctuation analysis of order two
+\citep{peng1994}. The pre-registered estimator, on the uncentred flow, is a variant of
+the specification curve. As a negative control, the signs are permuted within each day
+and the same centring and fit must give $\Hz=1/2$ (deviation D3).
 
 \paragraph{$\Hv$.} On the deseasonalised volume rate, the moments
 $m(q,\ell)=\overline{|v_{k+\ell}-v_k|^q}\propto\ell^{\,q\Hv}$ for

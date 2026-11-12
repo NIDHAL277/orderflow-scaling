@@ -27,7 +27,7 @@ from ofs.logs import configure_logging, logging_config, stage_event
 from ofs.paths import DataLayout
 from ofs.reduce.pipeline import MIN_PROFILE_DAYS, MissingRawFileError, Reducer
 from ofs.reduce.seasonality import window_days
-from ofs.schemas import PASS1_KINDS, PASS2_KINDS
+from ofs.schemas import PASS1_KINDS, PASS2_KINDS, PASS2_VC_KINDS
 from ofs.validate.checks import DayReport, run_checks
 from ofs.versioning import stage_version
 
@@ -279,7 +279,7 @@ def invalidate_day(
     With ``pass1``, the windows, pass-1 statistics and validation report go too: the raw
     file has to be read again.
     """
-    tables = [layout.stats_table(k) for k in PASS2_KINDS]
+    tables = [layout.stats_table(k) for k in (*PASS2_KINDS, *PASS2_VC_KINDS)]
     if pass1:
         tables += [layout.bins_table(1), layout.bins_table(10)]
         tables += [layout.stats_table(k) for k in PASS1_KINDS]

@@ -19,12 +19,14 @@ quadratic-variation estimator on (Delta, 2 Delta, 4 Delta).
 from __future__ import annotations
 
 import datetime as dt
+import functools
 import math
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from typing import Any
 
 import numpy as np
 import polars as pl
+from scipy.interpolate import CubicSpline
 from scipy.optimize import least_squares, nnls
 
 from ofs.estimators.base import (
@@ -39,11 +41,16 @@ from ofs.estimators.base import (
 )
 from ofs.utils import as_float
 
+DAY_S = 86_400
+# flow variants centred day by day in proportion to volume (table ``flow_var_vc``, ADR 0015)
+VOLUME_CENTRED = ("signed_vc", "signed_raw_vc", "shuffled_vc")
+
 
 # ---------------------------------------------------------------- flow variance
 def flow_features(stats: StatsBundle, days: Sequence[dt.date], variant: str) -> Features:
     """Increment sums of the cumulative signed flow per lag and day."""
-    df = stats.get("flow_var", pl.DataFrame())
+    table = "flow_var_vc" if variant in VOLUME_CENTRED else "flow_var"
+    df = stats.get(table, pl.DataFrame())
     if df.height == 0:
         return Features(tuple(days), np.zeros((len(days), 0)))
     df = df.filter(pl.col("variant") == variant)
@@ -82,20 +89,59 @@ def daily_centering_factor(lag: FloatArray, bins_per_day: int) -> FloatArray:
     return np.asarray(1.0 - shrink, dtype=np.float64)
 
 
+def bridge_variance(
+    H: float, lags: Sequence[int] | np.ndarray[Any, Any], n_bins: int
+) -> FloatArray:
+    """Mean squared lag-``m`` increment of a unit fBm once its net increment is removed evenly.
+
+    With ``X_c(n) = X(n) - (n/N) X(N)`` on ``n = 0..N`` (the daily centring of
+    ADR 0015 when activity is constant), averaged over the ``N - m + 1`` increments of
+    lag ``m``::
+
+        g_H(m) = m^{2H} - 2 (m/N) A(m) + (m/N)^2 N^{2H},
+        A(m)   = [sum_{u=N-m+1..N} u^{2H} - sum_{u=1..m-1} u^{2H}] / (N - m + 1),
+
+    ``A(m)`` being the average covariance of an increment with ``X(N)``. For
+    ``H = 1/2`` this is the Brownian bridge, ``m (1 - m/N)``.
+    """
+    p = 2.0 * H
+    m = np.asarray(lags, dtype=np.int64)
+    top = int(m.max())
+    low = np.concatenate([[0.0], np.cumsum(np.arange(1, top, dtype=np.float64) ** p)])
+    high = np.concatenate(
+        [[0.0], np.cumsum(np.arange(n_bins, n_bins - top, -1, dtype=np.float64) ** p)]
+    )
+    cov = (high[m] - low[m - 1]) / (n_bins - m + 1)
+    mf = m.astype(np.float64)
+    r = mf / n_bins
+    return np.asarray(mf**p - 2.0 * r * cov + r**2 * float(n_bins) ** p, dtype=np.float64)
+
+
+_BRIDGE_H = np.linspace(0.001, 0.999, 999)
+
+
+@functools.lru_cache(maxsize=32)
+def _bridge_spline(n_bins: int, lags: tuple[int, ...]) -> CubicSpline:
+    """``log g_H(m)`` of :func:`bridge_variance` on a fine grid of H, as a spline in H."""
+    table = np.stack([np.log(bridge_variance(float(h), lags, n_bins)) for h in _BRIDGE_H])
+    return CubicSpline(_BRIDGE_H, table, axis=0)
+
+
 def variances(
     sums: FloatArray, tau: FloatArray, *, centering: str = "none", resolution_s: int = 10
 ) -> tuple[FloatArray, FloatArray]:
     """Mean squared increment ``E[(X_{n+tau} - X_n)^2]`` per tau.
 
-    ``centering="none"`` (principal): the model has no drift, and a daily net
-    imbalance of the real flow *is* the low-frequency part of its long memory.
-    Removing a mean would bias the variance down at large tau (about -0.05 on H
-    at H = 0.9 in simulation).
+    ``centering="none"``: plain mean squared increments. On the uncentred flow
+    (``signed``, the pre-registered principal, kept as a robustness variant) a
+    day's net imbalance counts as memory; on the volume-centred flows
+    (``*_vc``, principal since deviation D4) the imbalance was removed by the
+    reducer and the fit models the removal (:func:`bridge_variance`).
 
-    ``centering="daily"`` (shuffled-sign negative control): a within-day sign
-    permutation keeps each day's net imbalance, a deterministic drift that is not
-    memory; it is removed day by day and the shrinkage this causes under the
-    Brownian null is corrected exactly (:func:`daily_centering_factor`).
+    ``centering="daily"`` (former shuffled-sign control, kept for the record): the
+    day's mean increment is removed and the shrinkage under the Brownian null is
+    corrected (:func:`daily_centering_factor`). It assumes a drift uniform in time,
+    which fails when activity clusters (ADR 0015).
     """
     s = sums.reshape(tau.size, 4)
     n = s[:, 0]
@@ -109,6 +155,27 @@ def variances(
     return tau[ok], var[ok]
 
 
+def _shapes(
+    tau: FloatArray, bridge: tuple[int, int] | None
+) -> tuple[Callable[[float], FloatArray], FloatArray]:
+    """Log shapes of the fractional (function of H) and Brownian parts, 0 at the first tau.
+
+    Without ``bridge``: ``2 H log(tau/tau0)`` and ``log(tau/tau0)``. With
+    ``bridge = (windows per day, window seconds)``: the same for flows whose daily net
+    increment was removed (:func:`bridge_variance`), normalised like ``t^{2H}`` so the
+    two amplitudes keep their meaning.
+    """
+    if bridge is None:
+        log_t = np.log(tau / float(tau[0]))
+        return (lambda h: 2.0 * h * log_t), log_t
+    n_bins, res = bridge
+    lags = tuple(int(v) for v in np.rint(tau / res).astype(np.int64))
+    spline = _bridge_spline(n_bins, lags)
+    log_m0 = math.log(lags[0])
+    brownian = np.log(bridge_variance(0.5, lags, n_bins)) - log_m0
+    return (lambda h: np.asarray(spline(h), dtype=np.float64) - 2.0 * h * log_m0), brownian
+
+
 def fit_mixed_fbm(
     tau: FloatArray,
     V: FloatArray,
@@ -116,28 +183,32 @@ def fit_mixed_fbm(
     start: tuple[float, float, float] | None = None,
     weights: FloatArray | None = None,
     min_fractional_share: float = 0.05,
+    bridge: tuple[int, int] | None = None,
 ) -> tuple[float, dict[str, Any]]:
-    """Fit ``V = s1^2 tau^{2H} + s2^2 tau`` in log space. Returns (H, diagnostics)."""
+    """Fit ``V = s1^2 tau^{2H} + s2^2 tau`` in log space. Returns (H, diagnostics).
+
+    ``bridge = (windows per day, window seconds)``: the flow was centred day by day
+    (ADR 0015); both parts are then fitted with their exact expected shape after the
+    centring (:func:`bridge_variance`) instead of the pure powers.
+    """
     ok = np.isfinite(V) & (V > 0)
     tau, V = tau[ok], V[ok]
     if tau.size < 4:
         return math.nan, {"error": "fewer than four usable tau"}
     t0 = float(tau[0])
-    t = tau / t0
     y = np.log(V)
     sw = np.sqrt(weights[ok]) if weights is not None else np.ones_like(y)
     lo_a, hi_a = float(y.min()) - 40.0, float(y.max()) + 10.0
+    frac, brown = _shapes(tau, bridge)
 
     def resid(p: FloatArray) -> FloatArray:
         h, a1, a2 = p
-        return np.asarray(
-            sw * (np.logaddexp(a1 + 2 * h * np.log(t), a2 + np.log(t)) - y), dtype=np.float64
-        )
+        return np.asarray(sw * (np.logaddexp(a1 + frac(h), a2 + brown) - y), dtype=np.float64)
 
     if start is None:
         best: tuple[float, tuple[float, float, float]] | None = None
         for h_try in np.linspace(0.02, 0.98, 49):
-            A = np.column_stack([t ** (2 * h_try), t]) / V[:, None]
+            A = np.column_stack([np.exp(frac(float(h_try))), np.exp(brown)]) / V[:, None]
             coef, _ = nnls(A, np.ones_like(V))
             a1 = math.log(max(coef[0], 1e-300)) if coef[0] > 0 else lo_a + 1
             a2 = math.log(max(coef[1], 1e-300)) if coef[1] > 0 else lo_a + 1
@@ -163,10 +234,11 @@ def fit_mixed_fbm(
     h, a1, a2 = (float(v) for v in sol.x)
     s1sq = math.exp(a1) / t0 ** (2 * h)
     s2sq = math.exp(a2) / t0
-    noise_share = math.exp(a2) / (math.exp(a1) + math.exp(a2))
-    t_max = float(t[-1])
-    frac_max = math.exp(a1) * t_max ** (2 * h)
-    fractional_share = frac_max / (frac_max + math.exp(a2) * t_max)
+    fh = frac(h)
+    frac_first, noise_first = math.exp(a1 + fh[0]), math.exp(a2 + brown[0])
+    noise_share = noise_first / (frac_first + noise_first)
+    frac_max, noise_max = math.exp(a1 + fh[-1]), math.exp(a2 + brown[-1])
+    fractional_share = frac_max / (frac_max + noise_max)
     diag = {
         "sigma1_sq": s1sq,
         "sigma2_sq": s2sq,
@@ -179,12 +251,15 @@ def fit_mixed_fbm(
         "at_bound": bool(h <= 0.0011 or h >= 0.9989),
         "start": [h, a1, a2],
         "residual_signs": "".join("+" if r > 0 else "-" for r in resid(sol.x)),
+        "bridge": bridge is not None,
     }
     diag["min_fractional_share"] = min_fractional_share
     if fractional_share < min_fractional_share:
         # No fractional component: the flow is Brownian at every scale, which is the
         # mixed model with H0 = 1/2; the fit is then flat in H and its H meaningless.
-        slope, _, _ = wls(np.log(tau), np.log(V))
+        # (On a centred flow the Brownian bridge's shrinkage is undone first.)
+        log_v = np.log(V) - (brown - np.log(tau / t0))
+        slope, _, _ = wls(np.log(tau), log_v)
         diag["fractional_identified"] = False
         return slope / 2.0, diag
     diag["fractional_identified"] = True
@@ -242,9 +317,14 @@ class _FlowEstimator(Estimator):
 
 
 class MixedFbmH0(_FlowEstimator):
-    """H0 from aggregated variances under a mixed fBm (principal, spec §5.2)."""
+    """H0 from aggregated variances under a mixed fBm (spec §5.2), on the uncentred flow.
+
+    The pre-registered principal; since deviation D4 a robustness variant
+    (``uncentred``), the principal being :class:`MixedFbmVcH0`.
+    """
 
     name = "mixed_fbm"
+    bridge = False  # True when the flow was centred day by day (fit with bridge shapes)
 
     def __init__(
         self, window_s: int, tau_max_s: float, *, weighting: str = "counts", **kw: Any
@@ -266,7 +346,12 @@ class MixedFbmH0(_FlowEstimator):
         n_total = float(sums.reshape(-1, 4)[:, 0].max()) if sums.size else 0.0
         threshold = identification_threshold(n_total, float(tau.max()) / res)
         h, diag = fit_mixed_fbm(
-            tau, V, start=meta.get("start"), weights=weights, min_fractional_share=threshold
+            tau,
+            V,
+            start=meta.get("start"),
+            weights=weights,
+            min_fractional_share=threshold,
+            bridge=(DAY_S // res, res) if self.bridge else None,
         )
         return Estimate(h, {**diag, "window_s": self.window_s, "weighting": self.weighting})
 
@@ -274,6 +359,27 @@ class MixedFbmH0(_FlowEstimator):
         """Fit metadata with the point estimate as starting value of bootstrap fits."""
         start = point.diagnostics.get("start")
         return {**meta, "start": tuple(start)} if start else meta
+
+
+class MixedFbmVcH0(MixedFbmH0):
+    """H0 on the order flow centred day by day in proportion to volume (principal, D4).
+
+    The reducer removes each day's net imbalance ``m_d = net flow / volume`` from
+    every window in proportion to its volume (``flow_var_vc``), so that a day-level
+    imbalance riding on bursts of trading activity is not read as memory: the
+    uncentred principal reads a memoryless flow with a 5 % daily imbalance as
+    ``H0`` of about 0.98, and a within-day sign shuffle as about 0.8 on real data
+    (ADR 0015). Removing the net increment shrinks the variance at large tau like a
+    bridge; the fit models that exactly (:func:`bridge_variance`).
+    """
+
+    name = "mixed_fbm_vc"
+    bridge = True
+
+    def __init__(
+        self, window_s: int, tau_max_s: float, *, flow_variant: str = "signed_vc", **kw: Any
+    ) -> None:
+        super().__init__(window_s, tau_max_s, flow_variant=flow_variant, **kw)
 
 
 class SingleFbmH0(_FlowEstimator):

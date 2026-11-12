@@ -25,6 +25,22 @@ simulation they halve the standard deviation compared with equal weights and rem
 spurious `H` on Brownian data. If the fractional part is not significant at 4 h, `H0` is set
 to 1/2. Code: `ofs.estimators.h0`, ADR 0008.
 
+**Why is the flow centred day by day in proportion to volume?** Because the development
+year showed that otherwise a day-level imbalance reads as memory.
+* **What failed.** The negative control (signs shuffled within each day) gave 0.80
+  instead of 0.5. The shuffle keeps each day's net buying or selling, which rides on
+  bursts of activity, and the control had removed a drift uniform in time.
+* **How far it goes.** Without centring, memoryless signs with a 5 % daily imbalance read
+  as `H0 ≈ 0.98` in simulation.
+* **The fix.** Each 10-second window now loses its volume times the day's imbalance.
+  Removing a day's net increment shrinks the variance at large τ like a bridge, and the
+  fit uses that exact shape, so genuine memory is not biased.
+* **The result.** The shuffled control returns 0.49–0.50, and real H0 drops by about 0.03.
+* **Why simulation missed it.** The simulated trades arrived uniformly in time; real
+  activity clusters.
+* It was decided on development data before the confirmation year was touched, and is
+  logged as deviations D3/D4 (ADR 0015).
+
 ## 3. Why reduce the trades to additive daily statistics?
 
 Every estimator is written as `fit(sum of daily feature rows)`: sums of squared increments

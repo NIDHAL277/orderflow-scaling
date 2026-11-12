@@ -8,13 +8,27 @@ Roles:
 * ``robustness``: variants of the specification curve (spec §9, step 4);
 * ``diagnostic``: reported, never tested (bias reproduction, descriptive proxies);
 * ``negative_control``: shuffled signs, expected ``H0 = 0.5`` (spec §9, step 3).
+
+H0 is estimated on the order flow centred day by day in proportion to volume
+(deviation D4, ADR 0015): principal, control, window and diagnostic variants all read
+the ``*_vc`` flows; the pre-registered uncentred principal stays as the robustness
+variant ``uncentred``. The shuffled-sign control uses the same centring (deviation D3);
+the shuffled sign autocorrelation is a diagnostic, since a power law fitted to a flat
+autocorrelation returns ``H0 = 1`` whatever the data.
 """
 
 from __future__ import annotations
 
 from ofs.config import EstimationConfig
 from ofs.estimators.base import Estimator
-from ofs.estimators.h0 import Dfa2H0, MixedFbmH0, QvRatioH0, SignAcfH0, SingleFbmH0
+from ofs.estimators.h0 import (
+    Dfa2H0,
+    MixedFbmH0,
+    MixedFbmVcH0,
+    QvRatioH0,
+    SignAcfH0,
+    SingleFbmH0,
+)
 from ofs.estimators.hsigma import (
     GjrDaily,
     GjrIntraday,
@@ -31,20 +45,25 @@ def build_registry(cfg: EstimationConfig) -> list[Estimator]:
     h0, hv, hs, im = cfg.h0, cfg.hvol, cfg.hsigma, cfg.impact
     tmax = h0.tau_grid.max_s
     pw = h0.primary_window_s
+    vc = "signed_vc"
     out: list[Estimator] = [
-        MixedFbmH0(pw, tmax, weighting=h0.weighting, variant=f"delta={pw}s", role="primary")
+        MixedFbmVcH0(pw, tmax, weighting=h0.weighting, variant=f"delta={pw}s", role="primary")
     ]
     out += [
-        MixedFbmH0(w, tmax, weighting=h0.weighting, variant=f"delta={w}s", role="robustness")
+        MixedFbmVcH0(w, tmax, weighting=h0.weighting, variant=f"delta={w}s", role="robustness")
         for w in cfg.windows_seconds
         if w != pw
     ]
     out += [
-        SingleFbmH0(w, tmax, variant=f"delta={w}s", role="diagnostic", bootstrap=False)
+        SingleFbmH0(
+            w, tmax, flow_variant=vc, variant=f"delta={w}s", role="diagnostic", bootstrap=False
+        )
         for w in cfg.windows_seconds
     ]
     out += [
-        QvRatioH0(w, tmax, variant=f"delta={w}s", role="diagnostic", bootstrap=False)
+        QvRatioH0(
+            w, tmax, flow_variant=vc, variant=f"delta={w}s", role="diagnostic", bootstrap=False
+        )
         for w in cfg.windows_seconds
     ]
     lo, hi = h0.sign_acf_fit_lags.min, h0.sign_acf_fit_lags.max
@@ -60,30 +79,34 @@ def build_registry(cfg: EstimationConfig) -> list[Estimator]:
             if est.name == control and est.variant == f"delta={pw}s":
                 est.role, est.bootstrap = "control", True
     out += [
-        MixedFbmH0(
+        MixedFbmVcH0(
             pw,
             tmax,
             weighting=h0.weighting,
-            flow_variant="signed_raw",
+            flow_variant="signed_raw_vc",
             variant="noseason",
             role="robustness",
         ),
-        MixedFbmH0(pw, 3600.0, weighting=h0.weighting, variant="tau_max=3600s", role="robustness"),
-        MixedFbmH0(
+        MixedFbmVcH0(
+            pw, 3600.0, weighting=h0.weighting, variant="tau_max=3600s", role="robustness"
+        ),
+        # the pre-registered principal, on the uncentred flow (deviation D4)
+        MixedFbmH0(pw, tmax, weighting=h0.weighting, variant="uncentred", role="robustness"),
+        MixedFbmVcH0(
             pw,
             tmax,
             weighting=h0.weighting,
-            flow_variant="shuffled",
-            centering="daily",
+            flow_variant="shuffled_vc",
             variant="shuffled_signs",
             role="negative_control",
         ),
+        # not a valid control (a flat ACF gives H0 = 1 by construction, deviation D3)
         SignAcfH0(
             lo,
             hi,
             sign_variant="shuffled",
             variant="shuffled_signs",
-            role="negative_control",
+            role="diagnostic",
             bootstrap=False,
         ),
     ]
@@ -187,6 +210,7 @@ def role_of(registry: list[Estimator], exponent: str, role: str) -> Estimator:
 
 STATS_KINDS: tuple[str, ...] = (
     "flow_var",
+    "flow_var_vc",
     "dfa",
     "sign_acf",
     "vol_moments",

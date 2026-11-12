@@ -230,6 +230,28 @@ def test_aggregate_impact_and_grids() -> None:
     assert st.dfa_boxes(CFG, 10).min() >= 4
 
 
+def test_volume_centred_flow_removes_the_days_imbalance() -> None:
+    rng = np.random.default_rng(5)
+    V = rng.lognormal(0.0, 1.0, 500)
+    F = 0.07 * V + rng.normal(0.0, 1.0, 500)
+    c = st.volume_centred(F, V)
+    assert abs(c.sum()) < 1e-9
+    assert np.allclose(st.volume_centred(F + 0.3 * V, V), c)  # any imbalance x volume goes
+    assert np.array_equal(st.volume_centred(F, np.zeros(500)), F)  # no volume: unchanged
+
+
+def test_pass2_flow_vc_variants(tmp_path) -> None:
+    df = make_trades(n=3000, seed=17)
+    t = TradeArrays.from_frame(read_aggtrades(write_aggtrades_zip(tmp_path / "a.zip", df)).df)
+    fine = make_bins(t, np.random.default_rng(1).permutation(t.eps), DAY, 10)
+    fv = pl.DataFrame(st.pass2_flow_vc(fine, CFG, flow_factor=None).tables["flow_var_vc"])
+    assert set(fv["variant"]) == {"signed_vc", "signed_raw_vc", "shuffled_vc"}
+    seasonal = fv.filter(pl.col("variant") == "signed_vc").sort("tau_s")
+    raw = fv.filter(pl.col("variant") == "signed_raw_vc").sort("tau_s")
+    assert np.allclose(seasonal["sum_sq"], raw["sum_sq"])  # no seasonal factors: identical
+    assert set(seasonal["tau_s"]) == set((st.tau_lags(CFG, 10) * 10).tolist())
+
+
 def test_pass2_tables_shapes(tmp_path) -> None:
     df = make_trades(n=3000, seed=16)
     t = TradeArrays.from_frame(read_aggtrades(write_aggtrades_zip(tmp_path / "a.zip", df)).df)

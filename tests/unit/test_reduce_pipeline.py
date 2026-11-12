@@ -63,6 +63,32 @@ def test_pass1_pass2_idempotent_and_versioned(project: Project) -> None:
     assert not layout.raw_file("spot", "aggTrades", "AAAUSDT", DAY).exists()
 
 
+def test_flow_vc_computed_alone_for_reduced_days(project: Project) -> None:
+    """A day reduced before ``flow_var_vc`` existed gets that table alone (ADR 0015)."""
+    layout = DataLayout(project.data_dir)
+    _write_day(layout, "AAAUSDT", "um", DAY, seed=3)
+    r = Reducer(project, layout)
+    r.pass1("AAAUSDT", "um", DAY, one_second=False)
+    assert r.pass2("AAAUSDT", "um", DAY) == "done"
+    table = layout.stats_table("flow_var_vc")
+    files = layout.day_files(table, "AAAUSDT", "um", DAY)
+    assert len(files) == 1 and r.v_flow_vc in files[0].name
+    assert set(pl.read_parquet(files[0])["variant"]) == {
+        "signed_vc",
+        "signed_raw_vc",
+        "shuffled_vc",
+    }
+    main = {
+        k: layout.day_files(layout.stats_table(k), "AAAUSDT", "um", DAY)[0] for k in PASS2_KINDS
+    }
+    stamps = {k: p.stat().st_mtime_ns for k, p in main.items()}
+    files[0].unlink()  # as on the days reduced before the table existed
+    assert not r.pass2_done("AAAUSDT", "um", DAY)
+    assert r.pass2("AAAUSDT", "um", DAY) == "done_vc"
+    assert r.pass2_done("AAAUSDT", "um", DAY) and layout.day_files(table, "AAAUSDT", "um", DAY)
+    assert {k: p.stat().st_mtime_ns for k, p in main.items()} == stamps  # left untouched
+
+
 def test_missing_raw_and_bins_raise(project: Project) -> None:
     r = Reducer(project)
     with pytest.raises(MissingRawFileError):

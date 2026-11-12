@@ -1,7 +1,8 @@
 """Property tests (Hypothesis), spec §10.
 
 * invariance of the exponents to the scale of quantities;
-* shuffled signs give H0 ~ 0.5;
+* shuffled signs give H0 ~ 0.5, also with clustered activity and a daily imbalance
+  (volume-centred flow, deviations D3/D4, ADR 0015);
 * structural properties of the bootstrap, Holm and Deming.
 """
 
@@ -17,13 +18,14 @@ from hypothesis import strategies as st
 
 from helpers import REPO
 from ofs.config import load_estimation_config
-from ofs.estimators.h0 import MixedFbmH0, SingleFbmH0
+from ofs.estimators.h0 import MixedFbmH0, MixedFbmVcH0, SingleFbmH0
 from ofs.estimators.hvol import MomentsHvol
 from ofs.estimators.impact import ProxyAImpact
 from ofs.inference.bootstrap import rng_for, stationary_indices, weights_from_indices
 from ofs.inference.deming import deming
 from ofs.inference.wald import holm
-from ofs.reduce.bins import TradeArrays, day_start_us, make_bins
+from ofs.reduce.bins import Bins, TradeArrays, day_start_us, make_bins
+from ofs.reduce.stats import pass2_flow_vc
 from ofs.simulate.fbm import mixed_fgn
 from ofs.simulate.signs import lmf_signs
 from ofs.simulate.study import flow_bundle, impact_bundle, sim_days, volume_bundle
@@ -94,6 +96,42 @@ def test_shuffled_signs_give_half(seed: int) -> None:
         value = cls(10, tmax, centering="daily").estimate(shuffled, DAYS).value
         assert abs(value - 0.5) < 0.05, (cls, value)
     assert SingleFbmH0(10, tmax).estimate(flow_bundle(F, DAYS, CFG, 10), DAYS).value > 0.6
+
+
+def _clustered_day(day: dt.date, seed: int, n: int = 30_000) -> Bins:
+    """One day of trades with clustered activity and memoryless signs with a daily bias."""
+    rng = rng_for(seed, "clustered")
+    rate = rough_rate_day(8640, 0.1, 1.0, 0.0, rng)  # intensity exp(fBm): bursts of activity
+    windows = rng.choice(8640, size=n, p=rate / rate.sum())
+    ts = np.sort(day_start_us(day) + windows * 10_000_000 + rng.integers(0, 10_000_000, n))
+    bias = float(np.clip(rng.normal(0.0, 0.05), -0.5, 0.5))  # sd 5 %, as on BTC
+    eps = np.where(rng.random(n) < (1.0 + bias) / 2.0, 1.0, -1.0)
+    trades = TradeArrays(ts, eps, rng.lognormal(0.0, 1.0, n) * 100.0, np.full(n, 100.0))
+    return make_bins(trades, rng.permutation(eps), day, 10)
+
+
+@settings(max_examples=3, deadline=None)
+@given(st.integers(min_value=0, max_value=10_000))
+def test_volume_centred_flow_has_no_memory_without_memory(seed: int) -> None:
+    """Deviations D3/D4 (ADR 0015): clustered activity and a daily imbalance but no memory.
+
+    The time-centred shuffled control read about 0.8 on real data in this situation; the
+    volume-centred flow and its shuffled control must give H0 = 1/2.
+    """
+    days = sim_days(6)
+    parts = [
+        pl.DataFrame(
+            pass2_flow_vc(_clustered_day(d, seed * 7 + i), CFG, flow_factor=None).tables[
+                "flow_var_vc"
+            ]
+        ).with_columns(pl.lit(d).alias("date"))
+        for i, d in enumerate(days)
+    ]
+    bundle = {"flow_var_vc": pl.concat(parts)}
+    tmax = CFG.h0.tau_grid.max_s
+    for variant in ("signed_vc", "shuffled_vc"):
+        value = MixedFbmVcH0(10, tmax, flow_variant=variant).estimate(bundle, days).value
+        assert abs(value - 0.5) < 0.05, (variant, value)
 
 
 @settings(max_examples=40, deadline=None)

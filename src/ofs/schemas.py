@@ -218,6 +218,14 @@ FLOW_VAR = TableSchema(
     checks={"sum_sq": [pa.Check.ge(0)]},
 )
 
+# the same sums for the flows centred day by day in proportion to volume (ADR 0015); a
+# table of its own, versioned on its own, so adding it did not recompute pass 2
+FLOW_VAR_VC = TableSchema(
+    "flow_var_vc",
+    _keyed({"variant": _S, "resolution_s": _I, "tau_s": _I, "n": _I, "sum": _F, "sum_sq": _F}),
+    checks={"sum_sq": [pa.Check.ge(0)]},
+)
+
 DFA = TableSchema(
     "dfa",
     _keyed(
@@ -495,6 +503,7 @@ STATS_SCHEMAS: dict[str, TableSchema] = {
     "seasonal": SEASONAL,
     "day_summary": DAY_SUMMARY,
     "flow_var": FLOW_VAR,
+    "flow_var_vc": FLOW_VAR_VC,
     "dfa": DFA,
     "vol_moments": VOL_MOMENTS,
     "vol_acov": VOL_ACOV,
@@ -513,3 +522,5 @@ PASS2_KINDS: tuple[str, ...] = (
     "local_var",
     "impact_agg",
 )
+# pass-2 tables with a version of their own (see FLOW_VAR_VC)
+PASS2_VC_KINDS: tuple[str, ...] = ("flow_var_vc",)

@@ -27,6 +27,19 @@ def cumulative(F: FloatArray, factors: FloatArray | None = None) -> FloatArray:
     return np.concatenate([[0.0], np.cumsum(f)])
 
 
+def volume_centred(F: FloatArray, V: FloatArray) -> FloatArray:
+    """Remove the day's net imbalance in proportion to volume: ``F - (sum F / sum V) V``.
+
+    A day's imbalance ``m_d = net flow / volume`` rides on its bursts of activity; removing
+    it evenly in time would leave ``m_d (V - mean V)``, which inherits the clustering of
+    activity and reads as memory (ADR 0015, deviations D3 and D4).
+    """
+    total = float(V.sum())
+    if total <= 0.0:
+        return np.asarray(F, dtype=np.float64).copy()
+    return np.asarray(F - (float(F.sum()) / total) * V, dtype=np.float64)
+
+
 @dataclass(frozen=True)
 class IncrementSums:
     """Sums of increments per lag (count, sum, sum of squares)."""
@@ -310,6 +323,44 @@ class Pass2Result:
             t.setdefault(name, []).append(value)
 
 
+def _flow_rows(
+    out: Pass2Result, table: str, variants: dict[str, FloatArray], lags: IntArray, res: int
+) -> None:
+    """Increment sums of each cumulative flow ``X`` per lag, as rows of ``table``."""
+    for variant, X in variants.items():
+        inc = increment_sums(X, lags)
+        for i, m in enumerate(lags):
+            out.add(
+                table,
+                variant=variant,
+                resolution_s=res,
+                tau_s=int(m) * res,
+                n=int(inc.n[i]),
+                sum=float(inc.s1[i]),
+                sum_sq=float(inc.s2[i]),
+            )
+
+
+def pass2_flow_vc(
+    fine: Bins, cfg: EstimationConfig, *, flow_factor: FloatArray | None
+) -> Pass2Result:
+    """Flow variances of the volume-centred flows (table ``flow_var_vc``, ADR 0015).
+
+    ``signed_vc`` (deseasonalised; the principal H0 since deviation D4),
+    ``signed_raw_vc`` (not deseasonalised) and ``shuffled_vc`` (the negative control,
+    deviation D3), each centred on its own day's imbalance.
+    """
+    out = Pass2Result()
+    signed = volume_centred(fine.F, fine.V)
+    variants = {
+        "signed_vc": cumulative(signed, flow_factor),
+        "signed_raw_vc": cumulative(signed, None),
+        "shuffled_vc": cumulative(volume_centred(fine.F_shuf, fine.V), flow_factor),
+    }
+    _flow_rows(out, "flow_var_vc", variants, tau_lags(cfg, fine.resolution_s), fine.resolution_s)
+    return out
+
+
 def pass2(
     fine: Bins,
     b10: Bins,
@@ -333,18 +384,7 @@ def pass2(
         "signed_raw": cumulative(fine.F, None),
         "shuffled": cumulative(fine.F_shuf, flow_factor),
     }
-    for variant, X in variants.items():
-        inc = increment_sums(X, lags)
-        for i, m in enumerate(lags):
-            out.add(
-                "flow_var",
-                variant=variant,
-                resolution_s=res,
-                tau_s=int(m) * res,
-                n=int(inc.n[i]),
-                sum=float(inc.s1[i]),
-                sum_sq=float(inc.s2[i]),
-            )
+    _flow_rows(out, "flow_var", variants, lags, res)
     boxes = dfa_boxes(cfg, res)
     dfa = dfa2_sums(variants["signed"], boxes)
     for i, s in enumerate(boxes):

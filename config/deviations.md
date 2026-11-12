@@ -43,3 +43,60 @@ list in its section "Deviations from protocol".
 
 Both changes were decided by the author on 2026-11-10, after the review of the protocol and
 before any estimate on real data.
+
+## D3 — 2026-11-12: a negative control that can return 1/2
+
+* **Rule (§9, step 3).** Signs shuffled within each day must give `H0 = 1/2`.
+* **What was known.** The development-year results (estimates, tests, controls, forecasts
+  of 2024-11-01 to 2025-10-31). Nothing of the confirmation year had been estimated.
+  * The flow control gave 0.80 on spot and 0.79 on USD-M; 0 of 60 spot pairs were within
+    0.05 of 0.5.
+  * The sign-autocorrelation control gave 1.00 everywhere.
+* **Change.** The shuffled flow is centred on each day's imbalance in proportion to
+  volume, as the principal now is (D4). The shuffled sign autocorrelation becomes a
+  diagnostic. Details and evidence: [ADR 0015](../docs/adr/0015-volume-centred-order-flow.md).
+* **Why.** Neither control could pass on real data whatever the truth.
+  * A power law fitted to the flat autocorrelation of shuffled signs returns 1 by
+    construction.
+  * The shuffle keeps each day's imbalance, which rides on clustered trading activity.
+    The control removed a drift uniform in time, so activity clustering survived as
+    apparent memory.
+  * Centring in proportion to volume gives 0.49–0.50 on the 8 pair-markets checked and in
+    every simulated case.
+* **Effect.** The control tests what it claims, and no estimate or test changes because of
+  it.
+
+## D4 — 2026-11-12: H0 on the flow centred day by day in proportion to volume
+
+* **Rule (§5.2, ADR 0008).** The principal fits the mixed fBm to the uncentred mean
+  squared increments of the flow; the daily net imbalance counts as memory.
+* **What was known.** The same development-year results as D3, with H0 medians of 0.70
+  on spot and 0.62 on USD-M. Nothing of the confirmation year had been estimated.
+* **Change.**
+  * The principal (`mixed_fbm_vc`), its robustness variants, the control and the
+    diagnostics are fitted to the flow centred day by day in proportion to volume
+    (table `flow_var_vc`).
+  * The fit uses the exact expected shape of the variance after that centring, a bridge
+    under constant activity.
+  * The pre-registered estimator stays in the specification curve as the variant
+    `uncentred`.
+  * The simulation study's H0 cells are re-run with the new principal, and the
+    pre-registered acceptance rule (|bias| ≤ 0.02 and calibrated coverage in the plausible
+    region) applies to it. Outcome: *to be added when the re-run finishes, before the tag.*
+* **Why.** The development data showed that the uncentred estimator counts a day-level
+  imbalance as long memory.
+  * In simulation, memoryless signs with a 5 % daily imbalance read as `H0 ≈ 0.98`.
+  * On real pairs, removing the imbalance lowers H0 by 0.01–0.085.
+  * The volume-centred fit gives 1/2 without memory and costs about 0.02 with genuine
+    memory before the bridge correction (none in the constant-activity simulation after it).
+  * The theory's H0 is the persistence of the order flow, not the day-to-day variation of
+    its imbalance. The choice was made on these grounds, not on the tests: H1–H3 may move
+    either way.
+* **Effect.** H0 is lower by about 0.03 (median of 8 pair-markets); every development
+  estimate, test and forecast that uses H0 is recomputed before `config-frozen`.
+
+D3 and D4 were decided by the author on 2026-11-12, after reviewing the development
+results and before any estimate on the confirmation year. The other development findings
+of that review (H_σ not identified on one year; H3's line test without power) are
+explained in the report without a protocol change. The 2 % limit of missing trade ids
+(ADR 0012) is kept.

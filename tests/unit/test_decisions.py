@@ -35,7 +35,7 @@ def _rows(
 
 def _raw() -> pl.DataFrame:
     rows = (
-        _rows("H0", "mixed_fbm", [0.7, 0.75, 0.8], 0.0, 0.02, 0.02 / 1.2)  # sd ratio 1.2
+        _rows("H0", "mixed_fbm_vc", [0.7, 0.75, 0.8], 0.0, 0.02, 0.02 / 1.2)  # sd ratio 1.2
         + _rows("H0", "qv_ratio", [0.7, 0.75, 0.8], 0.0, 0.03, 0.03)
         + _rows("H0_signs", "sign_acf", [0.7, 0.75, 0.8], -0.05, 0.02, 0.02)  # biased
         + _rows("Hvol", "moments", [0.2, 0.25, 0.3], -0.07, 0.02, 0.02)  # biased
@@ -52,7 +52,7 @@ def test_cell_stats_recover_bias_coverage_and_ratio() -> None:
     gjr = stats.filter(pl.col("estimator") == "gjr")
     assert gjr["bias"].abs().max() < 0.01  # type: ignore[operator]
     assert gjr["coverage"].min() > 0.9  # type: ignore[operator]
-    ratio = stats.filter(pl.col("estimator") == "mixed_fbm")["sd_ratio"]
+    ratio = stats.filter(pl.col("estimator") == "mixed_fbm_vc")["sd_ratio"]
     assert abs(float(ratio.median()) - 1.2) < 0.15  # type: ignore[arg-type]
     under = stats.filter(pl.col("estimator") == "acov_gmm")
     assert under["coverage"].max() < 0.93  # type: ignore[operator]
@@ -83,6 +83,8 @@ def test_decide_applies_both_readings() -> None:
     }
     k = calibrated["sd_inflation"]
     assert 1.1 < k < 1.3
+    # the H0 principal is the volume-centred fit since deviation D4 (ADR 0015)
+    assert calibrated["principals_plausible_region"]["H0"]["estimator"] == "mixed_fbm_vc"
     gmm = calibrated["principals_plausible_region"]["Hvol"]
     assert gmm["estimator"] == "acov_gmm" and gmm["coverage_k"][0] > gmm["coverage"][0]
     assert not math.isnan(out["candidates"]["Hvol"]["acov_gmm"]["max_abs_bias"])

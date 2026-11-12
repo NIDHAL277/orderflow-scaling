@@ -28,7 +28,14 @@ from pydantic.main import IncEx
 from ofs import __version__
 from ofs.config import EstimationConfig, FrozenModel, model_hash, read_yaml
 from ofs.estimators.base import Estimator, FloatArray
-from ofs.estimators.h0 import Dfa2H0, MixedFbmH0, QvRatioH0, SignAcfH0, SingleFbmH0
+from ofs.estimators.h0 import (
+    Dfa2H0,
+    MixedFbmH0,
+    MixedFbmVcH0,
+    QvRatioH0,
+    SignAcfH0,
+    SingleFbmH0,
+)
 from ofs.estimators.hsigma import GjrDaily, GjrIntraday, PVariationDaily, WhittleDaily
 from ofs.estimators.hvol import AcovGmmHvol, MomentsHvol
 from ofs.estimators.impact import ProxyAImpact
@@ -50,6 +57,11 @@ from ofs.simulate.volume import rough_rate_day, synthetic_runs
 
 SIM_START = dt.date(2001, 1, 1)  # a Monday
 DAY_S = 86_400
+# Bumped when the simulated scenario or the estimators of one exponent change: only that
+# exponent's checkpointed cells are recomputed, the others stay valid (the checkpoint
+# folder hashes the configurations, not the code).
+# H0 2: volume-centred principal, uncentred kept as a diagnostic (deviation D4, ADR 0015).
+SCENARIO_VERSIONS: dict[str, int] = {"H0": 2}
 
 
 class Profile(FrozenModel):
@@ -115,28 +127,38 @@ def _frame(rows: dict[str, list[Any]]) -> pl.DataFrame:
 def flow_bundle(
     F: FloatArray, days: list[dt.date], cfg: EstimationConfig, res_s: int
 ) -> dict[str, pl.DataFrame]:
-    """Flow statistics of a simulated signed-flow series, as the reducer writes them."""
+    """Flow statistics of a simulated signed-flow series, as the reducer writes them.
+
+    Activity is constant (one unit of volume per window), so the volume-centred flow
+    ``signed_vc`` is the day's flow less its average window (ADR 0015).
+    """
     per_day = DAY_S // res_s
     lags = st.tau_lags(cfg, res_s)
     boxes = st.dfa_boxes(cfg, res_s)
     fv: dict[str, list[Any]] = {
         k: [] for k in ("date", "variant", "resolution_s", "tau_s", "n", "sum", "sum_sq")
     }
+    vc: dict[str, list[Any]] = {k: [] for k in fv}
     dfa: dict[str, list[Any]] = {
         k: []
         for k in ("date", "variant", "resolution_s", "box_s", "n_boxes", "n_points", "sum_rss")
     }
     for i, d in enumerate(days):
-        X = st.cumulative(F[i * per_day : (i + 1) * per_day])
-        inc = st.increment_sums(X, lags)
+        f = F[i * per_day : (i + 1) * per_day]
+        X = st.cumulative(f)
         m = lags.size
-        fv["date"] += [d] * m
-        fv["variant"] += ["signed"] * m
-        fv["resolution_s"] += [res_s] * m
-        fv["tau_s"] += (lags * res_s).tolist()
-        fv["n"] += inc.n.tolist()
-        fv["sum"] += inc.s1.tolist()
-        fv["sum_sq"] += inc.s2.tolist()
+        for rows, variant, series in (
+            (fv, "signed", X),
+            (vc, "signed_vc", st.cumulative(st.volume_centred(f, np.ones_like(f)))),
+        ):
+            inc = st.increment_sums(series, lags)
+            rows["date"] += [d] * m
+            rows["variant"] += [variant] * m
+            rows["resolution_s"] += [res_s] * m
+            rows["tau_s"] += (lags * res_s).tolist()
+            rows["n"] += inc.n.tolist()
+            rows["sum"] += inc.s1.tolist()
+            rows["sum_sq"] += inc.s2.tolist()
         ds = st.dfa2_sums(X, boxes)
         dfa["date"] += [d] * boxes.size
         dfa["variant"] += ["signed"] * boxes.size
@@ -145,7 +167,7 @@ def flow_bundle(
         dfa["n_boxes"] += ds.n_boxes.tolist()
         dfa["n_points"] += ds.n_points.tolist()
         dfa["sum_rss"] += ds.sum_rss.tolist()
-    return {"flow_var": _frame(fv), "dfa": _frame(dfa)}
+    return {"flow_var": _frame(fv), "flow_var_vc": _frame(vc), "dfa": _frame(dfa)}
 
 
 def signs_bundle(
@@ -294,12 +316,22 @@ def scenario(
             return flow_bundle(F, days, cfg, res), days
 
         tmax = cfg.h0.tau_grid.max_s
+        vc = "signed_vc"  # the flows the real-data estimators read since deviation D4
         ests: list[Estimator] = [
-            MixedFbmH0(
+            MixedFbmVcH0(
                 res, tmax, weighting=cfg.h0.weighting, variant=f"delta={res}s", role="primary"
             ),
-            SingleFbmH0(res, tmax, variant=f"delta={res}s", role="diagnostic"),
-            QvRatioH0(res, tmax, variant=f"delta={res}s", role="diagnostic"),
+            # the pre-registered principal, uncentred: bias only (no bootstrap)
+            MixedFbmH0(
+                res,
+                tmax,
+                weighting=cfg.h0.weighting,
+                variant="uncentred",
+                role="diagnostic",
+                bootstrap=False,
+            ),
+            SingleFbmH0(res, tmax, flow_variant=vc, variant=f"delta={res}s", role="diagnostic"),
+            QvRatioH0(res, tmax, flow_variant=vc, variant=f"delta={res}s", role="diagnostic"),
             Dfa2H0(variant="signed", role="diagnostic"),
         ]
         return run_h0, ests
@@ -559,7 +591,9 @@ def run_study(
 
     def path(cell: tuple[str, float, float]) -> Path:
         e, t, n = cell
-        return checkpoints / f"{e}__true={t:.4f}__nsr={n:.4f}.parquet"
+        version = SCENARIO_VERSIONS.get(e, 1)
+        tag = f"{e}__v{version}" if version > 1 else e  # version 1: the original file names
+        return checkpoints / f"{tag}__true={t:.4f}__nsr={n:.4f}.parquet"
 
     todo = [c for c in cells if not path(c).exists()]
     started = time.monotonic()

@@ -52,7 +52,8 @@ CHOICES: tuple[Choice, ...] = (
     Choice("Hsigma", "gjr", "whittle_fukasawa", (0.05, 0.15)),
     Choice("Hvol", "moments", "acov_gmm", (0.1, 0.4)),
 )
-FIXED_PRINCIPALS: dict[str, str] = {"H0": "mixed_fbm", "delta": "proxy_a"}
+# H0: the mixed-fBm fit on the volume-centred flow since deviation D4 (ADR 0015)
+FIXED_PRINCIPALS: dict[str, str] = {"H0": "mixed_fbm_vc", "delta": "proxy_a"}
 
 
 def _in_range(lo: float, hi: float) -> pl.Expr:

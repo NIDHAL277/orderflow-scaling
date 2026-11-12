@@ -130,6 +130,8 @@ def negative_control_rows(est: pl.DataFrame) -> list[dict[str, Any]]:
         & (pl.col("variant") == "shuffled_signs")
         & pl.col("value").is_not_null()
     )
+    if "role" in shuffled.columns:  # the shuffled sign ACF is a diagnostic (deviation D3)
+        shuffled = shuffled.filter(pl.col("role") == "negative_control")
     for (market, estimator), part in shuffled.group_by(["market", "estimator"]):
         v = part["value"].to_numpy().astype(np.float64)
         rows.append(

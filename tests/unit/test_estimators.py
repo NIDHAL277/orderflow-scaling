@@ -13,11 +13,14 @@ from ofs.estimators.base import Features, pivot, scaling_exponent, wls
 from ofs.estimators.h0 import (
     Dfa2H0,
     MixedFbmH0,
+    MixedFbmVcH0,
     QvRatioH0,
     SignAcfH0,
     SingleFbmH0,
+    bridge_variance,
     daily_centering_factor,
     fit_mixed_fbm,
+    flow_features,
     variances,
 )
 from ofs.estimators.hsigma import (
@@ -82,6 +85,48 @@ def test_fit_mixed_fbm_exact_curve() -> None:
     assert v.tolist() == [1.0, 2.0, 3.0] and t.tolist() == [1.0, 2.0, 3.0]
     _, vc = variances(sums, np.array([10.0, 20.0, 30.0]), centering="daily", resolution_s=10)
     assert np.all(vc > np.array([0.5, 1.0, 1.5]))  # corrected upward for the centring shrinkage
+
+
+def test_bridge_variance_is_exact() -> None:
+    """ADR 0015: the expected shape after removing the day's net increment, checked
+    against the exact covariance of a centred fBm."""
+    N = 48
+    lags = np.arange(1, 16)
+    assert np.allclose(bridge_variance(0.5, lags, N), lags * (1 - lags / N))  # Brownian bridge
+    idx = np.arange(N + 1, dtype=float)
+    centring = np.eye(N + 1)
+    centring[:, N] -= idx / N  # X_c(n) = X(n) - (n/N) X(N)
+    for H in (0.3, 0.8):
+        p = 2 * H
+        cov = 0.5 * (
+            idx[:, None] ** p + idx[None, :] ** p - np.abs(idx[:, None] - idx[None, :]) ** p
+        )
+        c = centring @ cov @ centring.T
+        exact = [
+            np.mean([c[t + m, t + m] + c[t, t] - 2 * c[t + m, t] for t in range(N - m + 1)])
+            for m in lags
+        ]
+        assert np.allclose(bridge_variance(H, lags, N), exact, rtol=1e-12)
+
+
+def test_bridge_fit_on_an_exact_centred_curve() -> None:
+    tau = np.unique(np.round(np.geomspace(10, 14400, 25) / 10) * 10)
+    lags = (tau / 10).astype(int)
+    V = 2.0 * bridge_variance(0.75, lags, 8640) + 30.0 * bridge_variance(0.5, lags, 8640)
+    h, diag = fit_mixed_fbm(tau, V, bridge=(8640, 10))
+    assert abs(h - 0.75) < 1e-3 and diag["bridge"] and diag["fractional_identified"]
+    plain, _ = fit_mixed_fbm(tau, V)  # ignoring the centring biases H down
+    assert plain < h - 0.01
+
+
+@pytest.mark.parametrize("H", [0.65, 0.8])
+def test_volume_centred_estimator_recovers_h0(H: float) -> None:
+    """Constant activity: volume centring removes the day's net flow evenly (a bridge)."""
+    bundle, days = _flow(H, 0.5, n_days=8, seed=4)
+    vc = MixedFbmVcH0(10, TMAX).estimate(bundle, days)
+    assert abs(vc.value - H) < 0.06 and vc.diagnostics["bridge"], vc
+    a, b = flow_features(bundle, days, "signed_vc"), flow_features(bundle, days, "signed")
+    assert a.matrix.shape == b.matrix.shape and not np.allclose(a.matrix, b.matrix)
 
 
 def test_daily_centering_factor_matches_simulation() -> None:

@@ -1,6 +1,9 @@
 # ADR 0008 — H0: uncentred variances, 1/τ weights, identification of the fractional part
 
-**Status**: accepted (2026-11-08)
+**Status**: accepted (2026-11-08). Point (1) and the negative control amended by
+[ADR 0015](0015-volume-centred-order-flow.md) (deviations D3, D4): on real data the daily
+imbalance rides on clustered activity, so the flow is now centred day by day in
+proportion to volume and the fit models the centring exactly. Points (2) and (3) stand.
 
 **Context**: three problems found in simulation and property tests.
 

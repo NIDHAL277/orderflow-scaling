@@ -96,6 +96,17 @@ def test_registry_roles(project: Project) -> None:
     assert role_of(reg, "Hsigma", "control").name == cfg.hsigma.control_estimator
     assert role_of(reg, "Hvol", "primary").name == cfg.hvol.primary_estimator
     assert role_of(reg, "H0", "control").name == cfg.h0.concordance_control
+    # deviations D3 and D4 (ADR 0015): volume-centred principal, control and negative
+    # control; the pre-registered uncentred principal kept as a robustness variant
+    primary = role_of(reg, "H0", "primary")
+    assert primary.name == "mixed_fbm_vc" and getattr(primary, "flow_variant", "") == "signed_vc"
+    assert getattr(role_of(reg, "H0", "control"), "flow_variant", "") == "signed_vc"
+    uncentred = [e for e in reg if e.exponent == "H0" and e.variant == "uncentred"]
+    assert [(e.name, e.role) for e in uncentred] == [("mixed_fbm", "robustness")]
+    negative = [e for e in reg if e.role == "negative_control"]
+    assert [(e.name, getattr(e, "flow_variant", "")) for e in negative] == [
+        ("mixed_fbm_vc", "shuffled_vc")
+    ]
     keys = [e.key for e in reg]
     assert len(keys) == len(set(keys))
     with pytest.raises(KeyError):
@@ -215,5 +226,5 @@ def test_run_estimates_end_to_end(stats_project: tuple[Project, list[dt.date]]) 
     idx = pl.read_parquet(layout.bootstrap_index_file("confirmation"))
     assert idx.height == 12 * N_DAYS and set(idx["day"]) <= set(days)
     # the same replicate index means the same days for every asset (synchronized)
-    b = boot.filter((pl.col("estimator") == "mixed_fbm") & (pl.col("variant") == "delta=10s"))
+    b = boot.filter((pl.col("estimator") == "mixed_fbm_vc") & (pl.col("variant") == "delta=10s"))
     assert b.group_by("rep").len()["len"].max() == 3  # AAA spot, AAA um, BBB spot

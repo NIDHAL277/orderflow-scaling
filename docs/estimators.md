@@ -8,21 +8,36 @@ control, robustness, diagnostic, negative control) are assigned in
 
 ## H0 — signed flow
 
-`X` is the cumulative deseasonalised signed notional on windows of Δ.
+`X` is the cumulative deseasonalised signed notional on windows of Δ, **centred day by day
+in proportion to volume** ([ADR 0015](adr/0015-volume-centred-order-flow.md), deviation
+D4). Each window loses `m_d V`, its volume times the day's imbalance
+`m_d = net flow / volume`. A day-level imbalance riding on bursts of activity is then not
+read as memory; the uncentred flow reads a memoryless 5 % daily imbalance as H0 ≈ 0.98.
 
-* **Principal — mixed fBm**: `E[(X_{t+τ} − X_t)²] = σ1² τ^{2H0} + σ2² τ`, weighted NLS on
-  log-variances with weights ∝ 1/τ (inverse variance under the Brownian null), τ from Δ to
-  4 h. The fractional component must explain, at 4 h, more than twice the sampling error of
-  the variance there (`2·sqrt(4m/3n)`, floor 5 %); otherwise the flow is Brownian and
-  `H0 = 1/2` (slope of the log-log fit) ([ADR 0008](adr/0008-h0-variance-and-weighting.md)).
-* **Control — sign autocorrelation**: `C(ℓ) ~ ℓ^{−γ}` in event time, `H0 = 1 − γ/2`, on the
-  leading run of lag bins significantly above zero (2 sd under no memory). Fitting all
-  positive bins of a memoryless sequence returned a spurious 0.75 in testing.
-* Diagnostics: simple fBm slope (reproduces the paper's bias rising with Δ), DFA-2, and the
-  paper's own estimator `H = ½ log2[(V(4Δ) − 2V(2Δ)) / (V(2Δ) − 2V(Δ))]`.
-* Negative control: signs permuted within each day; the permutation keeps each day's net
-  imbalance (a drift, not memory), so this control removes the day's mean increment and
-  corrects the induced shrinkage exactly under the Brownian null.
+* **Principal — mixed fBm** (`mixed_fbm_vc`): `E[(X_{t+τ} − X_t)²] = σ1² τ^{2H0} + σ2² τ`.
+  * Fitted by weighted NLS on log-variances, with weights ∝ 1/τ (inverse variance under
+    the Brownian null), for τ from Δ to 4 h.
+  * Both terms take their exact expected shape after the daily centring, a bridge:
+    `g_H(m) = m^{2H} − 2(m/N)A(m) + (m/N)² N^{2H}`.
+  * The fractional component must explain, at 4 h, more than twice the sampling error of
+    the variance there (`2·sqrt(4m/3n)`, floor 5 %). Otherwise the flow is Brownian and
+    `H0 = 1/2` ([ADR 0008](adr/0008-h0-variance-and-weighting.md)).
+* **Control — quadratic-variation ratio** on (Δ, 2Δ, 4Δ), the paper's own estimator
+  `H = ½ log2[(V(4Δ) − 2V(2Δ)) / (V(2Δ) − 2V(Δ))]`, on the same flow. The simulation
+  study chose it over the sign autocorrelation, which was biased by 0.033.
+* **Robustness:**
+  * the other windows Δ;
+  * no deseasonalisation;
+  * τ up to 1 h;
+  * `uncentred`, the pre-registered principal on the uncentred flow.
+* **Diagnostics:**
+  * the simple fBm slope, which reproduces the paper's bias rising with Δ;
+  * DFA-2;
+  * the event-time sign autocorrelation, `C(ℓ) ~ ℓ^{−γ}`, `H0 = 1 − γ/2`, fitted on the
+    leading run of lag bins significantly above zero.
+* **Negative control:** signs permuted within each day, then the same centring and fit;
+  it must give 1/2 (deviation D3). The shuffled sign autocorrelation is no control: its
+  flat autocorrelation gives `H0 = 1` by construction.
 
 ## H_vol — volume rate
 

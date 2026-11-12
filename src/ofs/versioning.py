@@ -27,6 +27,7 @@ STAGE_VERSIONS: dict[str, str] = {
     "stats": "1",
     "klines_rv": "1",
     "history_rv": "3",  # 2: days without trades left out; 3: daily volume and trade count
+    "flow_vc": "1",  # volume-centred flow variances (ADR 0015)
 }
 
 
@@ -69,6 +70,11 @@ def stats_version(cfg: EstimationConfig) -> str:
         cfg.hsigma,
         cfg.impact.model_dump(mode="json", include={"proxy_b_horizons_s", "proxy_b_x_edges"}),
     )
+
+
+def flow_vc_version(cfg: EstimationConfig) -> str:
+    """Version of the volume-centred flow variances (``flow_var_vc``): same inputs as pass 2."""
+    return stage_version("flow_vc", {"stats": stats_version(cfg)})
 
 
 @functools.cache

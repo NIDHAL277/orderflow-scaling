@@ -18,9 +18,18 @@ from ofs.reduce import stats as st
 from ofs.reduce.bins import Bins, TradeArrays, bins_frame, bins_from_frame, day_rng, make_bins
 from ofs.reduce.events import binned_acf, lag_edges, run_tables, seasonal_sums, sign_autocorrelation
 from ofs.reduce.seasonality import bin_factors, profiles, window_days
-from ofs.schemas import BINS, PASS1_KINDS, PASS2_KINDS, RV, SEASONAL, STATS_SCHEMAS, TableSchema
+from ofs.schemas import (
+    BINS,
+    PASS1_KINDS,
+    PASS2_KINDS,
+    PASS2_VC_KINDS,
+    RV,
+    SEASONAL,
+    STATS_SCHEMAS,
+    TableSchema,
+)
 from ofs.validate.checks import jump_seconds
-from ofs.versioning import events_version, stage_version, stats_version
+from ofs.versioning import events_version, flow_vc_version, stage_version, stats_version
 
 MIN_PROFILE_DAYS = 7
 
@@ -40,6 +49,7 @@ class Reducer:
         self.v_bins = stage_version("bins")
         self.v_events = events_version(self.cfg)
         self.v_stats = stats_version(self.cfg)
+        self.v_flow_vc = flow_vc_version(self.cfg)
         self.v_klines = stage_version("klines_rv", {"return_s": self.cfg.hsigma.daily.return_s})
 
     # ------------------------------------------------------------ helpers
@@ -84,12 +94,21 @@ class Reducer:
         """Whether pass 1 of the day exists at the current versions."""
         return all(self._exists(t, asset, market, day, v) for t, v in self.pass1_tables(one_second))
 
-    def pass2_done(self, asset: str, market: Market, day: dt.date) -> bool:
-        """Whether pass 2 of the day exists at the current version."""
+    def _pass2_main_done(self, asset: str, market: Market, day: dt.date) -> bool:
         return all(
             self._exists(self.layout.stats_table(k), asset, market, day, self.v_stats)
             for k in PASS2_KINDS
         )
+
+    def _pass2_vc_done(self, asset: str, market: Market, day: dt.date) -> bool:
+        return all(
+            self._exists(self.layout.stats_table(k), asset, market, day, self.v_flow_vc)
+            for k in PASS2_VC_KINDS
+        )
+
+    def pass2_done(self, asset: str, market: Market, day: dt.date) -> bool:
+        """Whether every pass-2 table of the day exists at its current version."""
+        return self._pass2_main_done(asset, market, day) and self._pass2_vc_done(asset, market, day)
 
     def is_reduced(self, asset: str, market: Market, day: dt.date) -> bool:
         """Bins exist (any version): the raw file is no longer needed."""
@@ -255,8 +274,14 @@ class Reducer:
     def pass2(
         self, asset: str, market: Market, day: dt.date, seasonal: pl.DataFrame | None = None
     ) -> str:
-        """Daily sufficient statistics of one day from its windows."""
-        if self.pass2_done(asset, market, day):
+        """Daily sufficient statistics of one day from its windows.
+
+        Only the missing tables are computed: a day reduced before ``flow_var_vc``
+        existed gets that table alone (``"done_vc"``), its other statistics untouched.
+        """
+        main_done = self._pass2_main_done(asset, market, day)
+        vc_done = self._pass2_vc_done(asset, market, day)
+        if main_done and vc_done:
             return "skipped"
         b10 = self.read_bins(asset, market, day, 10)
         if b10 is None:
@@ -273,17 +298,24 @@ class Reducer:
             vol_p, flow_p = profiles(self.profile_rows(seasonal, day))
             flow_f = bin_factors(flow_p, day, fine.resolution_s)
             vol_f = bin_factors(vol_p, day, fine.resolution_s)
-        result = st.pass2(fine, b10, self.cfg, flow_factor=flow_f, vol_factor=vol_f)
-        for kind, cols in result.tables.items():
-            self._write(
-                self.layout.stats_table(kind),
-                STATS_SCHEMAS[kind],
-                cols,
-                asset,
-                market,
-                day,
-                self.v_stats,
+        parts: list[tuple[st.Pass2Result, str]] = []
+        if not main_done:
+            parts.append(
+                (st.pass2(fine, b10, self.cfg, flow_factor=flow_f, vol_factor=vol_f), self.v_stats)
             )
+        if not vc_done:
+            parts.append((st.pass2_flow_vc(fine, self.cfg, flow_factor=flow_f), self.v_flow_vc))
+        for result, version in parts:
+            for kind, cols in result.tables.items():
+                self._write(
+                    self.layout.stats_table(kind),
+                    STATS_SCHEMAS[kind],
+                    cols,
+                    asset,
+                    market,
+                    day,
+                    version,
+                )
         stage_event(
             "reduce_pass2",
             "ok",
@@ -291,8 +323,9 @@ class Reducer:
             market=market,
             day=day,
             resolution_s=fine.resolution_s,
+            only_vc=main_done,
         )
-        return "done"
+        return "done_vc" if main_done else "done"
 
     # ------------------------------------------------------------ klines
     def klines_rv(self, asset: str, market: Market, day: dt.date) -> str:
