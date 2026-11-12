@@ -8,6 +8,8 @@ from pathlib import Path
 
 import polars as pl
 
+from ofs.report.style import decision_label
+
 _ESCAPE = {"&": r"\&", "%": r"\%", "$": r"\$", "#": r"\#", "_": r"\_", "{": r"\{", "}": r"\}"}
 
 
@@ -71,7 +73,7 @@ def tests_table(tests: pl.DataFrame, path: Path) -> Path:
                     tex(r["mean_gap"]),
                     ci,
                     tex(r["p_holm"], 4),
-                    tex(r["decision"]),
+                    tex(decision_label(r["decision"])),
                 ]
             )
     return write_table(
@@ -294,7 +296,7 @@ def forecast_table(tests: pl.DataFrame, path: Path) -> Path:
                     tex(r["ratio"]),
                     ci,
                     tex(r["p_holm"], 4),
-                    tex(r["decision"]),
+                    tex(decision_label(r["decision"])),
                 ]
             )
     return write_table(

@@ -142,7 +142,8 @@ def relation(
                 label="Deming fit",
             )
             ax.set_title(
-                f"{style.MARKET_LABELS[market]}: {row['decision'][0].replace('_', ' ')}", fontsize=9
+                f"{style.MARKET_LABELS[market]}: {style.decision_label(row['decision'][0])}",
+                fontsize=9,
             )
         else:
             ax.set_title(style.MARKET_LABELS[market], fontsize=9)

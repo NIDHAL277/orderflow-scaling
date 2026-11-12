@@ -24,6 +24,14 @@ GRID = "#e4e3df"
 BAND = "#f0efec"
 MARKET_COLORS = {"spot": SPOT, "um": PERP}
 MARKET_LABELS = {"spot": "spot", "um": "USD-M perpetual"}
+# decision codes of the pre-registration, as the English report shows them
+DECISION_LABELS = {"non_tranchee": "undecided", "insufficient_data": "insufficient data"}
+
+
+def decision_label(code: str) -> str:
+    """Display name of a decision code (``non_tranchee`` reads "undecided")."""
+    return DECISION_LABELS.get(code, code.replace("_", " "))
+
 
 DIVERGING = LinearSegmentedColormap.from_list(
     "bias", ["#184f95", "#6da7ec", "#f0efec", "#ec8b89", "#b72f2f"]

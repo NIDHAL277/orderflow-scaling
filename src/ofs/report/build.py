@@ -11,7 +11,7 @@ import polars as pl
 from ofs.config import Project, Sample
 from ofs.inference.hypotheses import references
 from ofs.logs import get_logger
-from ofs.report import figures, tables
+from ofs.report import figures, style, tables
 from ofs.store import Store
 
 
@@ -104,7 +104,7 @@ def _write_macros(
             if tests.height
             else tests
         )
-        text = row["decision"][0].replace("_", " ") if row.height else "pending"
+        text = style.decision_label(row["decision"][0]) if row.height else "pending"
         lines.append(rf"\newcommand{{\resultH{name}}}{{{text}}}")
     counts = {"nPairs": "pending", "nPerps": "pending", "pairDays": "pending"}
     if project is not None:
@@ -129,7 +129,7 @@ def _write_macros(
                 & (pl.col("horizon") == forecast["horizon"].max())
             )
             if row.height and row["ratio"][0] is not None:
-                text = f"{row['ratio'][0]:.3f} ({row['decision'][0].replace('_', ' ')})"
+                text = f"{row['ratio'][0]:.3f} ({style.decision_label(row['decision'][0])})"
         lines.append(rf"\newcommand{{\resultF{name}}}{{{text}}}")
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
