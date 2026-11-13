@@ -234,13 +234,21 @@ def test_run_estimates_resumes_from_checkpoints(
         run_estimates(project, "confirmation", ("spot",), **kwargs)  # type: ignore[arg-type]
     saved = list((layout.root / "estimates" / "checkpoints").glob("*/*.pkl"))
     assert [p.name for p in saved] == ["AAAUSDT__spot.pkl"]
+    regimes_file = saved[0].with_name("regimes.json")
+    assert json.loads(regimes_file.read_text(encoding="utf-8"))["assets"] == {
+        "spot": ["AAAUSDT", "BBBUSDT"]
+    }
     calls.clear()
 
     def counted(project, asset, market, *args, **kw):  # type: ignore[no-untyped-def]
         calls.append(asset)
         return real(project, asset, market, *args, **kw)
 
+    def regimes_read_again(*args, **kw):  # type: ignore[no-untyped-def]
+        raise AssertionError("the saved regimes must be reused: reading them takes hours")
+
     monkeypatch.setattr(run_mod, "estimate_asset", counted)
+    monkeypatch.setattr(run_mod, "market_regimes", regimes_read_again)
     est, _ = run_estimates(project, "confirmation", ("spot",), **kwargs)  # type: ignore[arg-type]
     assert calls == ["BBBUSDT"] and set(est["symbol"]) == {"AAAUSDT", "BBBUSDT"}
     assert not list((layout.root / "estimates" / "checkpoints").glob("*/*"))  # cleared

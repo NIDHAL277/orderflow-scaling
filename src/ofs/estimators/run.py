@@ -367,12 +367,19 @@ def checkpoint_dir(
     return layout.root / "estimates" / "checkpoints" / f"{sample}-{key}"
 
 
+REGIMES_FILE = "regimes.json"
+
+
 class CheckpointStore:
     """Per-pair results saved as soon as they are computed, so a stopped run resumes.
 
     A laptop that sleeps or shuts down kills the estimation; before checkpoints every
     pair-market (about 3 hours of CPU in all) was lost, since results were written only
     at the end. Files are written atomically (temporary name, then rename).
+
+    The volatility regimes are saved too. They need the realised variance of every pair
+    on every day, 43,000 small files for a year of the full universe: close to two hours
+    on a cold hard disk, which every restart paid before computing its first pair.
     """
 
     def __init__(self, folder: Path) -> None:
@@ -399,6 +406,39 @@ class CheckpointStore:
         path = self._path(asset, market)
         tmp = path.with_name(f"{path.name}.tmp-{os.getpid()}")
         tmp.write_bytes(pickle.dumps(res, protocol=pickle.HIGHEST_PROTOCOL))
+        tmp.replace(path)
+
+    def load_regimes(self, assets: dict[str, list[str]]) -> dict[str, dict[dt.date, str]] | None:
+        """Return the saved volatility regimes, or None (absent, or computed for other pairs)."""
+        path = self.folder / REGIMES_FILE
+        if not path.exists():
+            return None
+        try:
+            saved = json.loads(path.read_text(encoding="utf-8"))
+            if saved["assets"] != assets:
+                return None
+            return {
+                market: {dt.date.fromisoformat(day): regime for day, regime in days.items()}
+                for market, days in saved["regimes"].items()
+            }
+        except (ValueError, KeyError, TypeError, AttributeError):  # truncated: recompute
+            return None
+
+    def save_regimes(
+        self, assets: dict[str, list[str]], regimes: dict[str, dict[dt.date, str]]
+    ) -> None:
+        """Save the volatility regimes of the run atomically, with the pairs they come from."""
+        self.folder.mkdir(parents=True, exist_ok=True)
+        path = self.folder / REGIMES_FILE
+        body = {
+            "assets": assets,
+            "regimes": {
+                market: {day.isoformat(): regime for day, regime in days.items()}
+                for market, days in regimes.items()
+            },
+        }
+        tmp = path.with_name(f"{path.name}.tmp-{os.getpid()}")
+        tmp.write_text(json.dumps(body), encoding="utf-8")
         tmp.replace(path)
 
     def clear(self) -> None:
@@ -451,15 +491,16 @@ def run_estimates(
         for p in universe.assets(m)
         if symbols is None or p.symbol in symbols
     ]
-    regimes: dict[str, dict[dt.date, str]] = (
-        {}
-        if sample == "history"  # regimes come from the aggTrades RV of the 24-month window
-        else {
-            m: market_regimes(layout, [a for a, mm in groups if mm == m], m, plan.days)
-            for m in markets
-        }
-    )
     store = CheckpointStore(checkpoint_dir(layout, project, sample, plan))
+    regimes: dict[str, dict[dt.date, str]] = {}
+    if sample != "history":  # regimes come from the aggTrades RV of the 24-month window
+        assets = {str(m): [a for a, mm in groups if mm == m] for m in markets}
+        saved = store.load_regimes(assets)
+        if saved is None:
+            regimes = {m: market_regimes(layout, assets[m], m, plan.days) for m in markets}
+            store.save_regimes(assets, regimes)
+        else:
+            regimes = saved
     done = {g: res for g in groups if (res := store.load(*g)) is not None}
     todo = [g for g in groups if g not in done]
     stage_event("estimate", "start", sample=sample, resumed=len(done), todo=len(todo))
