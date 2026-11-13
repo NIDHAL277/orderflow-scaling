@@ -74,7 +74,8 @@ simulated data with microstructure noise, which answers the objection that rough
 be an artefact of estimation \citep{contdas2024}; and (v) a pre-registered protocol: the
 hypotheses, estimators, grids and decision rule were fixed and tagged in the code
 repository before any estimator ran on real data, and the confirmation sample was only
-used once, with a frozen configuration.
+used once, with a frozen configuration. Four deviations, two of them decided after the
+development sample, are listed with their reasons in Section~\ref{sec:deviations}.
 
 A search of arXiv in November 2026, repeated every month since, found no test of these
 relations on crypto markets; studies of Bitcoin report rough or
@@ -188,8 +189,10 @@ terms; one day of the BTCUSDT perpetual during the liquidation cascade of 2025-1
 
 \section{Estimators}
 \label{sec:estimators}
-Each exponent has a principal and a control estimator; a result is reported as such only
-when the two agree within 0.05.
+Each exponent has a principal and a control estimator. For $\Hz$ and $\delta$ a result is
+reported as such only when the two agree within 0.05; for $\Hv$ and $\Hs$ the control is
+shown but does not decide (deviation D2). For these two exponents the simulation study
+chooses the principal among two candidates (Section~\ref{sec:simulation}).
 
 \paragraph{$\Hz$.} The flow is first centred day by day in proportion to volume: each
 window loses its volume times the day's imbalance (net flow over volume), so that a
@@ -203,8 +206,8 @@ by non-linear least squares on the aggregated variances, for $\tau$ from $\Delta
 hours, with weights proportional to $1/\tau$ (the inverse sampling variance under the
 Brownian null). Both terms take their exact expected shape after the centring, which
 pins each day's path like a bridge. The fractional part must explain, at four hours,
-more than twice the sampling error of the variance there; otherwise the flow is declared
-Brownian. The control is the quadratic-variation ratio on $(\Delta,2\Delta,4\Delta)$
+more than twice the sampling error of the variance there and at least 5\,\% of it;
+otherwise the flow is declared Brownian. The control is the quadratic-variation ratio on $(\Delta,2\Delta,4\Delta)$
 used by \citet{mocrs2026}, in the spirit of the mixed-semimartingale estimators of
 \citet{chong2025}; the simulation study preferred it to the event-time autocorrelation
 of signs, $C(\ell)\sim\ell^{-\gamma}$ with $\Hz=1-\gamma/2$, which we report as a
@@ -214,20 +217,24 @@ $\Delta$, noted by \citet{mocrs2026}) and a detrended fluctuation analysis of or
 the specification curve. As a negative control, the signs are permuted within each day
 and the same centring and fit must give $\Hz=1/2$ (deviation D3).
 
-\paragraph{$\Hv$.} On the deseasonalised volume rate, the moments
+\paragraph{$\Hv$.} Two estimators on the deseasonalised volume rate. The first is that of
+\citet{mocrs2026}: a generalised method of moments \citep{lixiu2016} on the autocovariance
+of increments truncated at three standard deviations, which models white observation
+noise explicitly. The second uses the moments
 $m(q,\ell)=\overline{|v_{k+\ell}-v_k|^q}\propto\ell^{\,q\Hv}$ for
-$q\in\{0.5,1,1.5,2,3\}$, with a check that $\zeta(q)$ is linear in $q$; the control is the
-same computation on $\log v$. We also compute the estimator of \citet{mocrs2026}: a
-generalised method of moments \citep{lixiu2016} on the autocovariance of increments
-truncated at three standard deviations, which models white observation noise explicitly.
+$q\in\{0.5,1,1.5,2,3\}$, with a check that $\zeta(q)$ is linear in $q$, on $v$ and on
+$\log v$. The specification named the moments; the simulation study made the first
+principal and the moments the control.
 
 \paragraph{$\Hs$.} The prediction concerns extraday volatility, so the daily horizon is
-primary: the moments of increments of daily log-volatility \citep{gatheral2018}, from the
-5-minute realised variance, for lags of 1 to 50 days; the control is the Whittle estimator
-of \citet{fukasawa2022}, which models the realised variance as a day-averaged fractional
-process observed with noise. The $p$-variation index of \citet{contdas2024} and the
-intraday horizon (15-minute local variances) are reported; the five-year daily history
-gives a robustness variant.
+primary, with two estimators on the daily 5-minute realised variance. The Whittle
+estimator of \citet{fukasawa2022} models the realised variance as a day-averaged
+fractional process observed with noise. The moments of increments of daily
+log-volatility \citep{gatheral2018}, for lags of 1 to 50 days, were the estimator named by
+the specification; after the simulation study the Whittle estimator is principal and the
+moments are the control (deviation D1). The $p$-variation index of \citet{contdas2024}
+and the intraday horizon (15-minute local variances) are reported; the five-year daily
+history gives a robustness variant.
 
 \paragraph{$\delta$.} Without account identifiers, meta-orders are approximated by runs of
 same-side trades separated by less than $g$ seconds ($g\in\{1,5,30\}$): with
@@ -291,10 +298,23 @@ correction \citep{holm1979} applies to H1--H3.
 and the mean gap $\bar g=\overline{Y_i-a_0-b_0\hat\Hz_i}$ exceeds 0.05 in Hurst units;
 \emph{compatible} if the test does not reject and the 95\,\% interval of $\bar g$ lies
 within $[-0.05,0.05]$; otherwise \emph{not decided}, with the number of days that would be
-needed, assuming an interval width proportional to $1/\sqrt{T}$. On synthetic universes of
-60 assets that satisfy the relations, the test at 1\,\% rejects between 0.9\,\% and
-1.3\,\% of the time; on universes that violate them by 0.05, 0.10 and 0.20 we report the
-power and the smallest effect detected with probability 0.8.
+needed, assuming an interval width proportional to $1/\sqrt{T}$. Size and power are
+measured on synthetic universes of assets that satisfy the relations, or violate them by
+0.05, 0.10 and 0.20, with estimation errors of the size found by the bootstrap
+(table~\ref{tab:power}).
+
+\paragraph{Reading the decisions.} The joint test compares a fitted line with the
+predicted one, so it needs a cross-section that lines up. Three situations leave a test
+uninformative without making it wrong, and table~\ref{tab:reading} counts them. First,
+the prediction may not be a value the exponent can take: $2\Hz-\tfrac32$ is negative as
+soon as $\Hz<\tfrac34$, and no estimator of a Hurst exponent returns a negative value, so
+H2 can only hold for pairs above that level. Second, an estimate may sit on a bound of
+its search range and outside its own bootstrap interval; the interval of the mean gap is
+then not centred on the gap, and two such estimates agree by construction. Third, when
+the estimates of the two exponents are not correlated across pairs, the
+errors-in-variables slope is unstable, its bootstrap covariance is large and the joint
+test cannot reject whatever the mean gap: an undecided relation whose gap interval lies
+far from zero is of this kind, and the gap is then the informative number.
 
 \section{Protocol}
 \label{sec:protocol}
@@ -317,6 +337,8 @@ together as a specification curve.
 \tableif{estimates.tex}
 \figureif{fig1_h0_by_asset.pdf}{0.8}{$\hat\Hz$ by asset with 95\,\% bootstrap intervals.}
 \tableif{tests.tex}
+\tableif{reading.tex}
+\tableif{levels.tex}
 \figureif{fig2_h1_hvol.pdf}{0.85}{H1: volume roughness against $\hat\Hz$, with the
 predicted line.}
 \figureif{fig3_h2_hsigma.pdf}{0.85}{H2: volatility roughness against $\hat\Hz$, with the
@@ -329,6 +351,7 @@ predicted line.}
 \section{Controls and robustness}
 \label{sec:robustness}
 \tableif{controls.tex}
+\tableif{power.tex}
 \figureif{fig7_spot_vs_perp.pdf}{0.95}{H5: exponents on the spot pair against the
 perpetual of the same crypto.}
 \figureif{fig8_specification_curve.pdf}{0.95}{Specification curve: every variant, sorted,
@@ -386,8 +409,9 @@ The impact exponent rests on a proxy: runs of same-side trades mix independent t
 their duration is not the execution horizon of a meta-order. All assets trade on one
 exchange; crypto order flow fragments across venues, and the persistence measured on one
 venue need not equal that of the aggregate flow. Twelve months is short for daily-horizon
-roughness, which the five-year variant only partly addresses since the history lacks the
-trades needed for $\Hz$. The perpetual trade files miss a small share of fills from mid-2025;
+roughness: on one year of daily data the estimate of $\Hs$ often sits on the lower bound
+of its range (table~\ref{tab:reading}), which the five-year variant only partly addresses
+since the history lacks the trades needed for $\Hz$. The perpetual trade files miss a small share of fills from mid-2025;
 these fills appear to enter the klines but not the trade-level statistics. Finally, the relations
 are tested under the assumption that each exponent is stable within a sample; the
 specification curve and the comparison of the two samples show how far this holds.
@@ -395,8 +419,10 @@ specification curve and the comparison of the two samples show how far this hold
 \section{Deviations from protocol}
 \label{sec:deviations}
 Every change made after the tag \texttt{prereg-v1} is listed here with its reason and its
-effect (\texttt{config/deviations.md}). Both were decided on 2026-11-10 from the simulation
-study alone, before any estimate on real data.
+effect (\texttt{config/deviations.md}). D1 and D2 were decided on 2026-11-10 from the
+simulation study alone, before any estimate on real data. D3 and D4 were decided on
+2026-11-12, after the first estimates on the development sample and before any estimate on
+the confirmation sample; the development results were then recomputed.
 
 \textbf{D1: Whittle principal for $\Hs$.} The pre-registered rule keeps the default
 estimator when neither candidate stays within 0.02 of the truth. For $\Hs$ that kept GJR,
@@ -410,6 +436,28 @@ bias up to 0.079) and of $\Hs$ (GJR, 0.121) are biased by more than that margin,
 result could fail the check because of the control. For these two exponents the control is
 reported but does not decide whether the result counts; for $\Hz$ and $\delta$ the rule is
 unchanged.
+
+\textbf{D3: a negative control that can return 1/2.} Signs permuted within each day were
+to give $\Hz=1/2$. On the development sample the control returned 0.80 on the flow and
+1.00 on the autocorrelation of signs, for every pair. Neither could pass whatever the
+truth: a power law fitted to a flat autocorrelation returns 1 by construction, and the
+permutation keeps each day's imbalance, which rides on clustered activity and survives a
+centring that is uniform in time. The permuted flow is now centred on each day's imbalance
+in proportion to volume, like the principal estimate (D4), and the autocorrelation of
+permuted signs is a diagnostic.
+
+\textbf{D4: $\Hz$ on the flow centred day by day in proportion to volume.} The
+pre-registered principal fitted the mixed model to the uncentred flow, which counts a
+day-level imbalance as long memory: in simulation, signs without memory and a 5\,\% daily
+imbalance read as $\Hz\approx0.98$. The principal, its variants, the control and the
+diagnostics are now computed on the centred flow, with the exact expected variance of a
+path pinned at both ends of the day; the pre-registered estimator remains a variant of the
+specification curve. The $\Hz$ cells of the simulation study were run again and the
+pre-registered acceptance rule applied: the worst bias in the plausible region is 0.0005,
+and the calibration factor given by the rule moved from 1.14 to $k=\sdInflation$. The
+choice rests on the definition of $\Hz$, the persistence of the flow and not the
+day-to-day variation of its imbalance; it was not made on the tests, which it could move
+either way.
 
 \section{Conclusion}
 To be written after the confirmatory tests.

@@ -323,6 +323,8 @@ def test_controls_and_specification_curve(project: Project) -> None:
         "power_violation_0.10",
         "mde_80pct",
         "mean_h0",
+        "median_h0",
+        "n_pairs",
         "share_within_0.05",
     } <= metrics
     neg = ctrl.filter(pl.col("metric") == "mean_h0")["value"][0]
@@ -397,7 +399,27 @@ def test_negative_controls_and_block_length() -> None:
         }
     )
     rows = negative_control_rows(est)
-    assert {r["metric"] for r in rows} == {"mean_h0", "share_within_0.05"}
+    assert {r["metric"] for r in rows} == {
+        "n_pairs",
+        "mean_h0",
+        "median_h0",
+        "share_within_0.05",
+    }
+    # a fit that is not identified lands on the bound: it moves the mean, not the median,
+    # and its interval contains 1/2, so it does not count as a failure of the control
+    wide = est.with_columns(
+        pl.Series("value", [0.49, 0.5, 0.999]),
+        pl.Series("ci_low", [0.48, 0.49, 0.47]),
+        pl.Series("ci_high", [0.495, 0.51, 0.999]),
+    )
+    got = {r["metric"]: r["value"] for r in negative_control_rows(wide)}
+    assert got["n_pairs"] == 3 and got["median_h0"] == 0.5 and got["mean_h0"] > 0.6
+    assert got["share_within_0.05"] == pytest.approx(2 / 3)
+    assert got["share_ci_contains_0.5"] == pytest.approx(2 / 3)
+    assert got["share_failing"] == 0.0
+    far = wide.with_columns(pl.Series("ci_low", [0.48, 0.49, 0.9]))
+    got = {r["metric"]: r["value"] for r in negative_control_rows(far)}
+    assert got["share_failing"] == pytest.approx(1 / 3)
     x = np.cumsum(rng_for(3, "b").normal(size=500)) * 0.01
     assert optimal_block_days(x) > 1
     assert math.isnan(optimal_block_days(x[:10]))

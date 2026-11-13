@@ -122,9 +122,22 @@ def empirical_spec(
     return spec
 
 
+NEGATIVE_CONTROL_MARGIN = 0.05
+
+
 def negative_control_rows(est: pl.DataFrame) -> list[dict[str, Any]]:
-    """Shuffled-sign estimates of H0 against 1/2 (negative control)."""
-    rows = []
+    """Shuffled-sign estimates of H0 against 1/2 (negative control).
+
+    The mean and the share within 0.05 of 1/2 are the summaries of the specification.
+    Three more are reported because a flow without memory has almost no fractional part,
+    and the mixed model then leaves H0 unidentified: such a fit can land anywhere up to
+    the bound, with an interval that says so, and a few of them move the mean without
+    saying anything about memory. The median is robust to them; ``share_ci_contains_0.5``
+    counts the intervals that contain 1/2; ``share_failing`` counts the pairs that are both
+    further than 0.05 from 1/2 and have an interval that excludes it, the reading of the
+    decision rule of the relations (significant and larger than the margin).
+    """
+    rows: list[dict[str, Any]] = []
     shuffled = est.filter(
         (pl.col("exponent") == "H0")
         & (pl.col("variant") == "shuffled_signs")
@@ -132,28 +145,38 @@ def negative_control_rows(est: pl.DataFrame) -> list[dict[str, Any]]:
     )
     if "role" in shuffled.columns:  # the shuffled sign ACF is a diagnostic (deviation D3)
         shuffled = shuffled.filter(pl.col("role") == "negative_control")
-    for (market, estimator), part in shuffled.group_by(["market", "estimator"]):
+    has_ci = {"ci_low", "ci_high"} <= set(shuffled.columns)
+    groups = shuffled.sort("market", "estimator").group_by(
+        ["market", "estimator"], maintain_order=True
+    )
+    for (market, estimator), part in groups:
         v = part["value"].to_numpy().astype(np.float64)
-        rows.append(
+        far = np.abs(v - 0.5) > NEGATIVE_CONTROL_MARGIN
+        metrics = {
+            "n_pairs": float(v.size),
+            "mean_h0": float(v.mean()),
+            "median_h0": float(np.median(v)),
+            "share_within_0.05": float(np.mean(~far)),
+        }
+        if has_ci:
+            lo = part["ci_low"].cast(pl.Float64).fill_null(np.nan).to_numpy()
+            hi = part["ci_high"].cast(pl.Float64).fill_null(np.nan).to_numpy()
+            known = np.isfinite(lo) & np.isfinite(hi)
+            if known.any():
+                contains = (lo <= 0.5) & (hi >= 0.5)
+                metrics["share_ci_contains_0.5"] = float(np.mean(contains[known]))
+                metrics["share_failing"] = float(np.mean(far[known] & ~contains[known]))
+        rows += [
             {
                 "control": "shuffled_signs",
                 "hypothesis": "H0=0.5",
                 "market": market,
                 "detail": estimator,
-                "metric": "mean_h0",
-                "value": float(v.mean()),
+                "metric": name,
+                "value": value,
             }
-        )
-        rows.append(
-            {
-                "control": "shuffled_signs",
-                "hypothesis": "H0=0.5",
-                "market": market,
-                "detail": estimator,
-                "metric": "share_within_0.05",
-                "value": float(np.mean(np.abs(v - 0.5) <= 0.05)),
-            }
-        )
+            for name, value in metrics.items()
+        ]
     return rows
 
 

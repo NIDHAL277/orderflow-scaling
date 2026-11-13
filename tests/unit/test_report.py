@@ -10,6 +10,16 @@ from ofs.report.build import build_report
 FIGURES = 9  # 8 of the main study + the forecasting figure
 
 
+def test_numbers_that_round_to_zero_carry_no_sign() -> None:
+    from ofs.report.tables import count, interval, percent, tex
+
+    assert tex(-0.0004) == "0.000" and tex(-0.004, 2) == "0.00" and tex(-0.0006) == "-0.001"
+    assert tex(None) == "--" and tex(float("nan")) == "--"
+    assert interval(-0.02, 0.0301) == "[-0.020, 0.030]" and interval(None, 0.1) == "--"
+    assert percent(0.9) == r"90\,\%" and percent(None) == "--"
+    assert count(47.0) == "47" and count(None) == "--" and count(3, 60) == "3 / 60"
+
+
 def test_report_on_an_empty_store(tmp_path) -> None:
     project = make_project(tmp_path / "repo")
     paper = build_report(project, "confirmation", "quick", compile_pdf=False)
@@ -18,7 +28,10 @@ def test_report_on_an_empty_store(tmp_path) -> None:
         "tests",
         "simulation",
         "estimates",
+        "levels",
+        "reading",
         "controls",
+        "power",
         "universe",
         "quality",
         "forecast",
@@ -33,14 +46,24 @@ def test_report_on_an_empty_store(tmp_path) -> None:
 
 def test_report_with_results(tmp_path) -> None:
     from ofs.inference.hypotheses import run_tests
+    from ofs.inference.power import run_controls
 
     project = make_project(tmp_path / "repo")
     write_results(project, "confirmation", n=10, reps=30)
     run_tests(project, "confirmation")
+    run_controls(project, "confirmation", markets=["spot"], n_universes=10)
     paper = build_report(project, "confirmation", "quick", compile_pdf=False)
     assert len(list((paper / "figures").glob("*.pdf"))) == FIGURES
-    text = (paper / "tables" / "tests.tex").read_text(encoding="utf-8")
+    tables = {p.stem: p.read_text(encoding="utf-8") for p in (paper / "tables").glob("*.tex")}
+    text = tables["tests"]
     assert "H1" in text and "compatible" in text
+    assert "H4" not in text and "H5" not in text  # levels have their own table
+    assert "H4" in tables["levels"] and "spot minus perpetual" in tables["levels"]
+    assert tables["levels"].count("H5 & ") == 4  # one row per exponent, each named
+    # the three relations on both markets; every prediction is admissible in this universe
+    assert tables["reading"].count("perpetual") == 3 and "H2 & spot & 10" in tables["reading"]
+    assert "mixed" in tables["controls"] and "not available" not in tables["controls"]
+    assert "H3" in tables["power"] and "not available" not in tables["power"]
     macros = (paper / "tables" / "macros.tex").read_text(encoding="utf-8")
     assert r"\newcommand{\nPairs}{3}" in macros and r"\newcommand{\nPerps}{2}" in macros
 

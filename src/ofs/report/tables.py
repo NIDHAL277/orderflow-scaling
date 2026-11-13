@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import math
 from collections.abc import Sequence
 from pathlib import Path
@@ -22,7 +23,9 @@ def tex(value: object, digits: int = 3) -> str:
             return "--"
         if math.isinf(value):
             return r"$\infty$"
-        return f"{value:.{digits}f}"
+        text = f"{value:.{digits}f}"
+        # a value that rounds to zero is printed without the sign of a negative zero
+        return text.lstrip("-") if float(text) == 0.0 else text
     text = str(value)
     for k, v in _ESCAPE.items():
         text = text.replace(k, v)
@@ -57,21 +60,60 @@ def write_table(
     return path
 
 
+MARKETS = {"spot": "spot", "um": "perpetual", "spot-um": "spot and perp."}
+EXPONENTS = {
+    "H0": r"$\hat H_0$",
+    "Hvol": r"$\hat H_{\mathrm{vol}}$",
+    "Hsigma": r"$\hat H_\sigma$",
+    "delta": r"$\hat\delta$",
+}
+RELATION_CODES = ("H1", "H2", "H3")
+
+
+def market_name(code: object) -> str:
+    """Return the display name of a market code (``um`` reads "perpetual")."""
+    return MARKETS.get(str(code), tex(code))
+
+
+def interval(low: object, high: object) -> str:
+    """Format an interval as ``[low, high]`` (dash when it is missing)."""
+    if low is None or high is None:
+        return "--"
+    return f"[{tex(low)}, {tex(high)}]"
+
+
+def percent(value: object) -> str:
+    """Format a share as a whole percentage (dash for missing)."""
+    if not isinstance(value, (int, float)) or math.isnan(value):
+        return "--"
+    return rf"{100.0 * value:.0f}\,\%"
+
+
+def count(value: object, of: object = None) -> str:
+    """Format an integer count, as ``n / of`` when the total is given (dash for missing)."""
+    if not isinstance(value, (int, float)) or math.isnan(value):
+        return "--"
+    return f"{int(value)} / {int(of)}" if isinstance(of, (int, float)) else str(int(value))
+
+
 def tests_table(tests: pl.DataFrame, path: Path) -> Path:
-    """Table of the cross-sectional tests H1-H5."""
+    """Table of the cross-sectional tests of the three relations (H1-H3)."""
     rows = []
     if tests.height:
-        for r in tests.sort(["hypothesis", "market", "estimator_set"]).iter_rows(named=True):
-            ci = f"[{tex(r['gap_ci_low'])}, {tex(r['gap_ci_high'])}]"
+        relations = tests.filter(pl.col("hypothesis").is_in(RELATION_CODES)).with_columns(
+            (pl.col("estimator_set") != "primary").alias("_control")
+        )
+        for r in relations.sort(["hypothesis", "market", "_control"]).iter_rows(named=True):
             rows.append(
                 [
                     tex(r["hypothesis"]),
-                    tex(r["market"]),
+                    market_name(r["market"]),
                     tex(r["estimator_set"]),
                     str(r["n_assets"]),
-                    tex(r["b_hat"]),
+                    tex(r["b_hat"], 2),
+                    tex(r["b0"], 0),
                     tex(r["mean_gap"]),
-                    ci,
+                    interval(r["gap_ci_low"], r["gap_ci_high"]),
                     tex(r["p_holm"], 4),
                     tex(decision_label(r["decision"])),
                 ]
@@ -84,16 +126,61 @@ def tests_table(tests: pl.DataFrame, path: Path) -> Path:
             "Estimators",
             "N",
             r"$\hat b$",
+            r"$b_0$",
             "Mean gap",
-            "95 \\% CI",
+            "95\\,\\% CI",
             r"$p$ (Holm)",
             "Decision",
         ],
         rows,
-        "Cross-sectional tests. Decision rule: rejected if the Holm-adjusted joint Wald test rejects at 1\\,\\% "
-        "and the mean gap exceeds 0.05; compatible if it does not reject and the CI lies in $[-0.05, 0.05]$.",
+        "Cross-sectional tests of $Y=a_0+b_0H_0$ (H1: volume, H2: volatility, H3: impact). "
+        "$\\hat b$ is the fitted slope and $b_0$ the predicted one; the mean gap is the average "
+        "of $Y_i-a_0-b_0\\hat H_{0,i}$ over pairs. A relation is rejected if the Holm-adjusted "
+        "joint Wald test rejects at 1\\,\\% and the mean gap exceeds 0.05, compatible if the "
+        "test does not reject and the interval lies in $[-0.05, 0.05]$, undecided otherwise: "
+        "either the test rejects a gap smaller than 0.05, or it does not reject while the "
+        "interval reaches beyond 0.05.",
         "tab:tests",
-        "lllrrrcrl",
+        "lllrrrrcrl",
+    )
+
+
+def levels_table(tests: pl.DataFrame, path: Path) -> Path:
+    """Table of the level of H0 (H4) and of spot against perpetual (H5)."""
+    rows = []
+    if tests.height:
+        levels = tests.filter(pl.col("hypothesis").is_in(["H4", "H5"]))
+        for r in levels.sort(["hypothesis"], maintain_order=True).iter_rows(named=True):
+            details = json.loads(r["details"]) if r["details"] else {}
+            if r["hypothesis"] == "H4":
+                quantity = rf"median {EXPONENTS['H0']}, liquid pairs, {market_name(r['market'])}"
+                inside = percent(details.get("share_inside"))
+            else:
+                name = EXPONENTS.get(str(details.get("exponent")), tex(r["relation"]))
+                quantity = f"{name}: spot minus perpetual"
+                inside = "--"
+            rows.append(
+                [
+                    tex(r["hypothesis"]),
+                    quantity,
+                    count(r["n_assets"]),
+                    tex(r["mean_gap"]),
+                    interval(r["gap_ci_low"], r["gap_ci_high"]),
+                    inside,
+                    tex(decision_label(r["decision"])),
+                ]
+            )
+    return write_table(
+        path,
+        ["Hyp.", "Quantity", "N", "Value", "95\\,\\% CI", "In range", "Decision"],
+        rows,
+        "Level and robustness. H4 (descriptive): median of $\\hat H_0$ over the most liquid "
+        "pairs, and share of these pairs in $[0.70, 0.85]$. H5: mean difference between the "
+        "spot pair and the perpetual of the same crypto, compatible if its interval lies in "
+        "$[-0.05, 0.05]$, rejected if the interval excludes zero and the difference exceeds "
+        "0.05.",
+        "tab:levels",
+        "llrrcrl",
     )
 
 
@@ -128,6 +215,7 @@ def simulation_table(summary: pl.DataFrame, path: Path) -> Path:
 def estimates_table(est: pl.DataFrame, path: Path) -> Path:
     """Table of the per-pair estimates."""
     rows = []
+    order = {name: i for i, name in enumerate(EXPONENTS)}
     if est.height:
         prim = est.filter(
             (pl.col("role") == "primary")
@@ -142,13 +230,16 @@ def estimates_table(est: pl.DataFrame, path: Path) -> Path:
                 pl.col("value").quantile(0.25).alias("q1"),
                 pl.col("value").quantile(0.75).alias("q3"),
             )
-            .sort(["exponent", "market"])
+            .with_columns(
+                pl.col("exponent").replace_strict(order, default=len(order)).alias("_order")
+            )
+            .sort(["_order", "market"])
         )
         for r in agg.iter_rows(named=True):
             rows.append(
                 [
-                    tex(r["exponent"]),
-                    tex(r["market"]),
+                    EXPONENTS.get(r["exponent"], tex(r["exponent"])),
+                    market_name(r["market"]),
                     str(r["n"]),
                     tex(r["med"]),
                     f"[{tex(r['q1'])}, {tex(r['q3'])}]",
@@ -158,35 +249,143 @@ def estimates_table(est: pl.DataFrame, path: Path) -> Path:
         path,
         ["Exponent", "Market", "N", "Median", "IQR"],
         rows,
-        "Primary estimates across pairs.",
+        "Primary estimates across pairs: median and interquartile range.",
         "tab:estimates",
         "llrrc",
     )
 
 
-def controls_table(ctrl: pl.DataFrame, path: Path) -> Path:
-    """Table of the negative controls and power."""
-    rows = (
-        [
-            [
-                tex(r["control"]),
-                tex(r["hypothesis"]),
-                tex(r["market"]),
-                tex(r["metric"]),
-                tex(r["value"]),
-            ]
-            for r in ctrl.iter_rows(named=True)
-        ]
-        if ctrl.height
-        else []
+def _metrics(ctrl: pl.DataFrame, control: str) -> list[dict[str, object]]:
+    """One record per (hypothesis, market, detail) of ``control``, metrics as keys."""
+    part = ctrl.filter(pl.col("control") == control) if ctrl.height else ctrl
+    if part.height == 0:
+        return []
+    wide = part.pivot(on="metric", index=["hypothesis", "market", "detail"], values="value").sort(
+        "hypothesis", "market", "detail"
     )
+    return list(wide.iter_rows(named=True))
+
+
+def controls_table(ctrl: pl.DataFrame, path: Path) -> Path:
+    """Table of the negative control: H0 of the flow with shuffled signs."""
+    rows = [
+        [
+            market_name(r["market"]),
+            tex(r["detail"]),
+            count(r.get("n_pairs")),
+            tex(r.get("median_h0")),
+            tex(r.get("mean_h0")),
+            percent(r.get("share_within_0.05")),
+            percent(r.get("share_ci_contains_0.5")),
+            percent(r.get("share_failing")),
+        ]
+        for r in _metrics(ctrl, "shuffled_signs")
+    ]
     return write_table(
         path,
-        ["Control", "Hyp.", "Market", "Metric", "Value"],
+        [
+            "Market",
+            "Estimator",
+            "Pairs",
+            "Median",
+            "Mean",
+            "Within 0.05",
+            "CI contains 1/2",
+            "Failing",
+        ],
         rows,
-        "Negative controls, size and power of the cross-sectional test.",
+        "Negative control: $\\hat H_0$ of the flow whose trade signs are permuted within "
+        "each day, which has no memory; the expected value is 1/2. Within 0.05: share of "
+        "pairs with $|\\hat H_0-\\tfrac12|\\le 0.05$. Failing: share of pairs further than "
+        "0.05 from 1/2 whose 95\\,\\% interval excludes 1/2. A flow without memory has almost "
+        "no fractional part, so its exponent is not identified for some pairs: their estimate "
+        "can lie anywhere up to 1, with an interval that contains 1/2, which moves the mean "
+        "but not the median.",
         "tab:controls",
-        "lllll",
+        "llrrrrrr",
+    )
+
+
+def power_table(ctrl: pl.DataFrame, path: Path) -> Path:
+    """Table of the size and power of the joint test on synthetic universes."""
+    rows = [
+        [
+            tex(r["hypothesis"]),
+            market_name(r["market"]),
+            tex(r.get("size_at_1pct")),
+            tex(r.get("power_violation_0.05"), 2),
+            tex(r.get("power_violation_0.10"), 2),
+            tex(r.get("power_violation_0.20"), 2),
+            tex(r.get("mde_80pct")),
+        ]
+        for r in _metrics(ctrl, "synthetic_universe")
+    ]
+    return write_table(
+        path,
+        [
+            "Hyp.",
+            "Errors of",
+            "Size at 1\\,\\%",
+            "Power, 0.05",
+            "Power, 0.10",
+            "Power, 0.20",
+            "Smallest detected",
+        ],
+        rows,
+        "Size and power of the joint test on synthetic universes: true $H_0$ uniform on "
+        "$[0.65, 0.85]$, every pair exactly on a line, estimation errors with the standard "
+        "deviations of the real bootstrap on the stated market and a correlation of 0.3 "
+        "across pairs. Size: rejection rate at 1\\,\\% when the relation holds. Power: "
+        "rejection rate when every pair is shifted by 0.05, 0.10 or 0.20. Smallest detected: "
+        "shift rejected with probability 0.8. These figures are an upper bound for a real "
+        "cross-section, which is narrower in $H_0$ and does not lie on a line "
+        "(table~\\ref{tab:reading}).",
+        "tab:power",
+        "llrrrrr",
+    )
+
+
+def reading_table(aids: pl.DataFrame, path: Path) -> Path:
+    """Table of the reading aids: what limits the test of each relation."""
+    rows = []
+    for r in aids.sort("hypothesis", "market").iter_rows(named=True) if aids.height else []:
+        sign = "+" if r["predicted_sign"] > 0 else "$-$"
+        rows.append(
+            [
+                tex(r["hypothesis"]),
+                market_name(r["market"]),
+                count(r["n_assets"]),
+                tex(r["h0_sd"]),
+                tex(r["h0_reliability"], 2),
+                f"{tex(r['rank_corr'], 2)} ({sign})",
+                count(r["admissible"]),
+                count(r["y_at_bound"]),
+                count(r["y_outside_ci"]),
+            ]
+        )
+    return write_table(
+        path,
+        [
+            "Hyp.",
+            "Market",
+            "N",
+            r"sd of $\hat H_0$",
+            "Reliability",
+            "Rank corr.",
+            "Admissible",
+            "At a bound",
+            "Outside CI",
+        ],
+        rows,
+        "Reading aids for the tests (descriptive). Sd: standard deviation of $\\hat H_0$ "
+        "across pairs; reliability: share of its variance across pairs that is not estimation "
+        "error. Rank corr.: Spearman correlation across pairs between $\\hat H_0$ and the "
+        "estimate of the other exponent, with the sign the relation predicts. Admissible: "
+        "pairs whose predicted value $a_0+b_0\\hat H_0$ lies in $(0,1)$, the only values the "
+        "exponent can take. At a bound, outside CI: pairs whose estimate of the other "
+        "exponent sits on a bound of its search range, or outside its own 95\\,\\% interval.",
+        "tab:reading",
+        "llrrrrrrr",
     )
 
 

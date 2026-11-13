@@ -10,6 +10,7 @@ import polars as pl
 
 from ofs.config import Project, Sample
 from ofs.inference.hypotheses import references
+from ofs.inference.reading import reading_aids
 from ofs.logs import get_logger
 from ofs.report import figures, style, tables
 from ofs.store import Store
@@ -61,9 +62,13 @@ def build_report(
     figures.forecast_ratios(fc_tests, fig_dir / "fig9_forecast_ratios.pdf")
 
     tables.tests_table(tests, tab_dir / "tests.tex")
+    tables.levels_table(tests, tab_dir / "levels.tex")
+    inflation = project.estimation.inference.bootstrap.sd_inflation
+    tables.reading_table(reading_aids(est, refs, inflation=inflation), tab_dir / "reading.tex")
     tables.simulation_table(sim, tab_dir / "simulation.tex")
     tables.estimates_table(est, tab_dir / "estimates.tex")
     tables.controls_table(ctrl, tab_dir / "controls.tex")
+    tables.power_table(ctrl, tab_dir / "power.tex")
     try:
         pairs = [
             (p.rank, p.symbol, p.perp, p.median_daily_notional_usd, p.coverage)
