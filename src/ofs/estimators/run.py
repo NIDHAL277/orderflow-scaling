@@ -14,8 +14,11 @@ from __future__ import annotations
 import datetime as dt
 import json
 import math
+import os
+import pickle
+import shutil
 from collections.abc import Sequence
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -343,6 +346,67 @@ def results_frames(
     return est, boot
 
 
+def checkpoint_dir(
+    layout: DataLayout, project: Project, sample: Sample, plan: BootstrapPlan
+) -> Path:
+    """Folder of the per-pair results of one estimation run.
+
+    Its name hashes everything a result depends on (sample, days, replications,
+    configuration, code version), so a checkpoint is only reused by the same run.
+    """
+    key = model_hash(
+        [
+            sample,
+            [d.isoformat() for d in plan.days],
+            int(plan.indices[""].shape[0]),
+            model_hash(project.estimation),
+            code_version(project.root),
+        ],
+        length=12,
+    )
+    return layout.root / "estimates" / "checkpoints" / f"{sample}-{key}"
+
+
+class CheckpointStore:
+    """Per-pair results saved as soon as they are computed, so a stopped run resumes.
+
+    A laptop that sleeps or shuts down kills the estimation; before checkpoints every
+    pair-market (about 3 hours of CPU in all) was lost, since results were written only
+    at the end. Files are written atomically (temporary name, then rename).
+    """
+
+    def __init__(self, folder: Path) -> None:
+        self.folder = folder
+
+    def _path(self, asset: str, market: str) -> Path:
+        return self.folder / f"{asset}__{market}.pkl"
+
+    def load(self, asset: str, market: str) -> AssetResult | None:
+        """Return the saved result of one pair-market, or None."""
+        path = self._path(asset, market)
+        if not path.exists():
+            return None
+        try:
+            res = pickle.loads(path.read_bytes())
+        except Exception:  # truncated or stale: recompute that pair
+            path.unlink(missing_ok=True)
+            return None
+        return res if isinstance(res, AssetResult) else None
+
+    def save(self, asset: str, market: str, res: AssetResult) -> None:
+        """Save one pair-market's result atomically."""
+        self.folder.mkdir(parents=True, exist_ok=True)
+        path = self._path(asset, market)
+        tmp = path.with_name(f"{path.name}.tmp-{os.getpid()}")
+        tmp.write_bytes(pickle.dumps(res, protocol=pickle.HIGHEST_PROTOCOL))
+        tmp.replace(path)
+
+    def clear(self) -> None:
+        """Remove the run's checkpoints once its files are written."""
+        if self.folder.exists():
+            shutil.rmtree(self.folder)
+
+
 def run_estimates(
     project: Project,
     sample: Sample,
@@ -395,20 +459,33 @@ def run_estimates(
             for m in markets
         }
     )
-    results: list[AssetResult] = []
-    if jobs > 1:
+    store = CheckpointStore(checkpoint_dir(layout, project, sample, plan))
+    done = {g: res for g in groups if (res := store.load(*g)) is not None}
+    todo = [g for g in groups if g not in done]
+    stage_event("estimate", "start", sample=sample, resumed=len(done), todo=len(todo))
+
+    def finished(a: str, m: Market, res: AssetResult) -> None:
+        store.save(a, m, res)
+        done[(a, m)] = res
+        stage_event(
+            "estimate", "ok", symbol=a, market=m, sample=sample, done=len(done), of=len(groups)
+        )
+
+    if jobs > 1 and todo:
         with ProcessPoolExecutor(
             max_workers=jobs, initializer=_init_worker, initargs=(project, plan, regimes)
         ) as pool:
-            futures = [pool.submit(_work, a, m, sample) for a, m in groups]
-            results = [f.result() for f in futures]
+            futures = {pool.submit(_work, a, m, sample): (a, m) for a, m in todo}
+            for f in as_completed(futures):
+                finished(*futures[f], f.result())
     else:
-        for a, m in groups:
-            results.append(estimate_asset(project, a, m, sample, plan, regimes.get(m, {})))
-            stage_event("estimate", "ok", symbol=a, market=m, sample=sample)
+        for a, m in todo:
+            finished(a, m, estimate_asset(project, a, m, sample, plan, regimes.get(m, {})))
+    results = [done[g] for g in groups]  # spot by rank, then USD-M by rank
     est, boot = results_frames(results, project)
     write_parquet_atomic(est, layout.estimates_file(sample))
     write_parquet_atomic(boot, layout.bootstrap_file(sample))
+    store.clear()  # the sample's files are written: the checkpoints have served
     main_idx = plan.indices[""]
     idx = pl.DataFrame(
         {

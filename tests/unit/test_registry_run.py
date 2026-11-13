@@ -211,6 +211,41 @@ def test_replicates_modes(stats_project: tuple[Project, list[dt.date]]) -> None:
     assert r is not None and np.isfinite(r).mean() > 0.8
 
 
+def test_run_estimates_resumes_from_checkpoints(
+    stats_project: tuple[Project, list[dt.date]], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A run stopped after one pair resumes without recomputing it (laptop shut down)."""
+    import ofs.estimators.run as run_mod
+
+    project, days = stats_project
+    layout = DataLayout(project.data_dir)
+    real = run_mod.estimate_asset
+    calls: list[str] = []
+
+    def interrupted(project, asset, market, *args, **kw):  # type: ignore[no-untyped-def]
+        calls.append(asset)
+        if len(calls) == 2:
+            raise RuntimeError("machine shut down")
+        return real(project, asset, market, *args, **kw)
+
+    monkeypatch.setattr(run_mod, "estimate_asset", interrupted)
+    kwargs = {"reps": 5, "days": days, "symbols": ["AAAUSDT", "BBBUSDT"]}
+    with pytest.raises(RuntimeError):
+        run_estimates(project, "confirmation", ("spot",), **kwargs)  # type: ignore[arg-type]
+    saved = list((layout.root / "estimates" / "checkpoints").glob("*/*.pkl"))
+    assert [p.name for p in saved] == ["AAAUSDT__spot.pkl"]
+    calls.clear()
+
+    def counted(project, asset, market, *args, **kw):  # type: ignore[no-untyped-def]
+        calls.append(asset)
+        return real(project, asset, market, *args, **kw)
+
+    monkeypatch.setattr(run_mod, "estimate_asset", counted)
+    est, _ = run_estimates(project, "confirmation", ("spot",), **kwargs)  # type: ignore[arg-type]
+    assert calls == ["BBBUSDT"] and set(est["symbol"]) == {"AAAUSDT", "BBBUSDT"}
+    assert not list((layout.root / "estimates" / "checkpoints").glob("*/*"))  # cleared
+
+
 def test_run_estimates_end_to_end(stats_project: tuple[Project, list[dt.date]]) -> None:
     project, days = stats_project
     layout = DataLayout(project.data_dir)
