@@ -17,7 +17,7 @@ the confirmation sample before `config-frozen` or if `config/estimation.yaml` ch
 In the production image the tags are baked at build time
 ([ADR 0006](adr/0006-protocol-state-in-the-image.md)).
 
-The full text is [config/preregistration.md](https://github.com/nidhal-v/orderflow-scaling/blob/main/config/preregistration.md).
+The full text is [config/preregistration.md](https://github.com/NIDHAL277/orderflow-scaling/blob/main/config/preregistration.md).
 
 ## Timeline (12 weeks, ~15 h a week)
 

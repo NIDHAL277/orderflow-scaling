@@ -12,7 +12,7 @@ from ofs.config import Project, Sample
 from ofs.inference.hypotheses import references
 from ofs.inference.reading import reading_aids
 from ofs.logs import get_logger
-from ofs.report import figures, style, tables
+from ofs.report import figures, readme, style, tables
 from ofs.store import Store
 
 
@@ -82,6 +82,8 @@ def build_report(
     tables.forecast_table(fc_tests, tab_dir / "forecast.tex")
     tables.forecast_simulation_table(store.forecast_simulation(), tab_dir / "forecast_sim.tex")
     _write_macros(tests, tab_dir / "macros.tex", project, quality, fc_tests)
+    if sample == "confirmation":
+        _front_page(project, tests, fc_tests, margin)
 
     if compile_pdf:
         compile_latex(paper)
@@ -137,6 +139,33 @@ def _write_macros(
                 text = f"{row['ratio'][0]:.3f} ({style.decision_label(row['decision'][0])})"
         lines.append(rf"\newcommand{{\resultF{name}}}{{{text}}}")
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def _front_page(
+    project: Project, tests: pl.DataFrame, forecast: pl.DataFrame, margin: float
+) -> None:
+    """Headline figure and result block of the README, from the confirmation results."""
+    if not tests.height or not tests.filter(pl.col("hypothesis") == "H1").height:
+        return  # nothing confirmed yet: the README keeps its block
+    image = project.root / "docs" / "img" / "headline.png"
+    image.parent.mkdir(parents=True, exist_ok=True)
+    period = project.estimation.split.period("confirmation")
+    span = f"{period.start:%Y-%m-%d} to {period.end:%Y-%m-%d}"
+    figures.headline(tests, margin, image, f"Gap to the predicted relations, {span}")
+    try:
+        pairs = project.universe.pairs
+        n_spot, n_perp = len(pairs), sum(1 for p in pairs if p.perp)
+    except FileNotFoundError:
+        n_spot = n_perp = 0
+    block = readme.results_block(
+        tests,
+        forecast,
+        period=span,
+        n_spot=n_spot,
+        n_perp=n_perp,
+        figure="docs/img/headline.png",
+    )
+    readme.update_readme(project.root / "README.md", block)
 
 
 def compile_latex(paper: Path, document: str = "main.tex") -> bool:

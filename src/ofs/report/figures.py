@@ -264,6 +264,76 @@ def forest_residuals(res: pl.DataFrame, margin: float, path: Path) -> Path:
     return path
 
 
+HEADLINE_NAMES = {"H1": "H1 volume", "H2": "H2 volatility", "H3": "H3 impact"}
+
+
+def headline(tests: pl.DataFrame, margin: float, path: Path, title: str) -> Path:
+    """Front-page figure: mean gap to each predicted relation with its 95 % CI, by market.
+
+    One axis in Hurst units; the grey band is the equivalence margin; spot and perpetual
+    are the two validated categorical colours; each interval carries its decision.
+    """
+    codes = [r.code for r in RELATIONS]
+    prim = (
+        tests.filter((pl.col("estimator_set") == "primary") & pl.col("hypothesis").is_in(codes))
+        if tests.height
+        else tests
+    )
+    if prim.height == 0:
+        return _placeholder(path, "Gap to the predicted relations", "run `ofs test` first")
+    fig, ax = plt.subplots(figsize=(7.0, 3.0))
+    ax.axvspan(-margin, margin, color=style.BAND, zorder=0)
+    ax.axvline(0, color=style.INK, lw=0.8, zorder=1)
+    xs: list[float] = [-margin, margin]
+    for market, dy in (("spot", 0.17), ("um", -0.17)):
+        color = style.MARKET_COLORS[market]
+        label: str | None = style.MARKET_LABELS[market]
+        for i, code in enumerate(codes):
+            hit = prim.filter((pl.col("hypothesis") == code) & (pl.col("market") == market))
+            if hit.height == 0 or hit["mean_gap"][0] is None:
+                continue
+            r = hit.row(0, named=True)
+            y = len(codes) - 1 - i + dy
+            lo, hi, gap = r["gap_ci_low"], r["gap_ci_high"], float(r["mean_gap"])
+            if lo is not None and hi is not None:
+                ax.hlines(y, lo, hi, color=color, lw=2.0, zorder=2)
+                xs += [float(lo), float(hi)]
+            ax.plot(gap, y, "o", ms=6.5, color=color, mec="white", mew=1.0, zorder=3, label=label)
+            label = None  # one legend entry per market
+            xs.append(gap)
+            right = max(gap, float(hi) if hi is not None else gap)
+            ax.annotate(
+                style.decision_label(r["decision"]),
+                (right, y),
+                xytext=(6, 0),
+                textcoords="offset points",
+                va="center",
+                fontsize=8,
+                color=style.INK_2,
+            )
+    span = max(xs) - min(xs)
+    ax.set_xlim(min(xs) - 0.06 * span, max(xs) + 0.24 * span)
+    ax.set_ylim(-0.6, len(codes) - 0.4)
+    ax.set_yticks(range(len(codes)), [HEADLINE_NAMES[c] for c in reversed(codes)])
+    ax.tick_params(axis="y", length=0)
+    ax.grid(axis="y", visible=False)
+    ax.set_xlabel("observed minus predicted exponent, mean over pairs (95 % interval)")
+    ax.text(
+        0,
+        len(codes) - 0.45,
+        f"±{margin:g}",
+        ha="center",
+        va="bottom",
+        fontsize=7,
+        color=style.MUTED,
+    )
+    ax.set_title(title, loc="left")
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.24), ncol=2, fontsize=8)
+    fig.savefig(path, dpi=200, facecolor="white")
+    plt.close(fig)
+    return path
+
+
 def spot_vs_perp(est: pl.DataFrame, refs: dict[str, Ref], margin: float, path: Path) -> Path:
     """Figure 7: exponents on spot against the perpetual of the same crypto (H5)."""
     if est.height == 0:

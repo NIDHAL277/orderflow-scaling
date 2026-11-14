@@ -12,8 +12,10 @@ A forecasting extension then asks whether that roughness **forecasts** daily vol
 volume out of sample, and whether the roughness implied by order flow forecasts as well as
 the one measured on volatility ([docs/forecasting.md](docs/forecasting.md)).
 
+<!-- results:start -->
 > **Result:** *pending — the confirmatory tests run on the frozen confirmation sample
 > (2025-11-01 → 2026-10-31) after the tags `prereg-v1` and `config-frozen`.*
+<!-- results:end -->
 
 **At a glance**
 
@@ -33,7 +35,6 @@ the one measured on volatility ([docs/forecasting.md](docs/forecasting.md)).
 * **Quality**: `mypy --strict`, ruff, 217 tests (92 % coverage), MkDocs site,
   14 architecture decision records, incident notes.
 
-<!-- Key figure, rebuilt by `make report`: paper/figures/fig2_h1_hvol.pdf -->
 
 ## Reproduce
 

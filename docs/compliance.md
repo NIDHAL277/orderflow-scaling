@@ -63,7 +63,7 @@ decision or an action of the project owner is needed.
 | structlog JSON, one event per stage, pair, day | done |
 | NumPy docstrings, MkDocs, ADRs | done — ruff `D` rules with the NumPy convention enforced in CI |
 | No secrets; pip-audit and Dependabot; API read-only with rate limit | done |
-| Code MIT; raw files never redistributed; Binance terms read | done — [DATA_LICENSE](https://github.com/nidhal-v/orderflow-scaling/blob/main/DATA_LICENSE.md): derived data CC BY-NC-SA 4.0 with attribution |
+| Code MIT; raw files never redistributed; Binance terms read | done — [DATA_LICENSE](https://github.com/NIDHAL277/orderflow-scaling/blob/main/DATA_LICENSE.md): derived data CC BY-NC-SA 4.0 with attribution |
 | CI: push (lint, types, tests, small simulation, Docker), weekly (full simulation, pip-audit, report), tag (image, docs) | done — `.github/workflows/ci.yml` |
 
 ## Production and deliverables (§11-§12)

@@ -15,7 +15,7 @@ Alternative: a laptop left on at night with the same `docker-compose.yml`.
 ## Deploy
 
 ```bash
-git clone https://github.com/nidhal-v/orderflow-scaling && cd orderflow-scaling
+git clone https://github.com/NIDHAL277/orderflow-scaling && cd orderflow-scaling
 cp .env.example .env            # Healthchecks URL, hostnames, R2 credentials
 mkdir -p data && sudo chown 1000 data
 docker compose pull && docker compose up -d

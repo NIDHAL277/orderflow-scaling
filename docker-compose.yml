@@ -3,7 +3,7 @@
 # ./data is written by the pipeline (uid 1000) and mounted read-only in api and dashboard.
 
 x-ofs: &ofs
-  image: ghcr.io/${GITHUB_OWNER:-nidhal-v}/orderflow-scaling:${OFS_IMAGE_TAG:-latest}
+  image: ghcr.io/${GITHUB_OWNER:-nidhal277}/orderflow-scaling:${OFS_IMAGE_TAG:-latest}
   build:
     context: .
     args:

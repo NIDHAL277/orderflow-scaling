@@ -48,7 +48,7 @@ Read on 2026-11-09: Binance Vision Dataset Terms, version 1.0, last updated 2026
 
 | Clause | What it says | How the project complies |
 |---|---|---|
-| §3.1, §2.4 | datasets under CC BY-NC-SA 4.0; data derived from them (charts, models, indicators) governed by the same terms | derived statistics, results, figures, API and dashboard published under CC BY-NC-SA 4.0 with attribution ([DATA_LICENSE.md](https://github.com/nidhal-v/orderflow-scaling/blob/main/DATA_LICENSE.md)); code stays MIT |
+| §3.1, §2.4 | datasets under CC BY-NC-SA 4.0; data derived from them (charts, models, indicators) governed by the same terms | derived statistics, results, figures, API and dashboard published under CC BY-NC-SA 4.0 with attribution ([DATA_LICENSE.md](https://github.com/NIDHAL277/orderflow-scaling/blob/main/DATA_LICENSE.md)); code stays MIT |
 | §3.4, §4.1-4.4 | non-commercial use only: academic research, open-source evaluations; no trading, signal sale or commercial product | academic research; the spec excludes trading and backtests (§4) |
 | §4.5 | redistributed derivative works credit Binance Vision and keep CC BY-NC-SA 4.0 | attribution line in the README, report, API description and dashboard |
 | §7 | respect rate limits; no scraping meant to get around them | 8 parallel requests, exponential back-off, nothing downloaded twice |

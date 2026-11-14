@@ -1,6 +1,6 @@
 site_name: orderflow-scaling
 site_description: Asset-by-asset test of the order-flow / volume / volatility / impact scaling laws on crypto
-repo_url: https://github.com/nidhal-v/orderflow-scaling
+repo_url: https://github.com/NIDHAL277/orderflow-scaling
 theme:
   name: material
   features: [navigation.sections, content.code.copy]

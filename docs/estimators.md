@@ -103,7 +103,7 @@ full`; worst |bias| over the cells of the plausible region, noise/signal ≤ 1):
 | calibration | median true sd / bootstrap sd over 39 cells | k = 1.14 at registration (H0 coverage 72-94 % raw, 80-96 % with k); k = 1.06 after the volume-centred H0 of D4 (H0 bias 0.0005, coverage 89-96 % raw, 91.5-98 % with k) |
 
 Controls that fail the bias rule (moments for H_vol, GJR for H_σ) are reported but do not
-decide whether a result counts (deviation D2, [config/deviations.md](https://github.com/nidhal-v/orderflow-scaling/blob/main/config/deviations.md)).
+decide whether a result counts (deviation D2, [config/deviations.md](https://github.com/NIDHAL277/orderflow-scaling/blob/main/config/deviations.md)).
 
 The H_σ result is itself a finding: on one year of daily data, roughness near `H = 0.1`
 cannot be estimated within 0.02 by either estimator; the five-year history variant
