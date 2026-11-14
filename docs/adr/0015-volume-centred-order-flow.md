@@ -97,3 +97,21 @@ pre-registered acceptance rule decides.
   measured by the re-run study.
 * Every development-sample estimate, test and forecast that uses H0 is recomputed before
   the `config-frozen` tag.
+
+**Outcome on the development year** (re-run of 2026-11-14, all 119 pair-markets):
+
+* The negative control has a median of 0.500 on spot and 0.499 on USD-M, with 90 % and
+  97 % of the pairs within 0.05 of 1/2. The rest are fits without a fractional part,
+  whose intervals contain 1/2.
+* `H0` hardly moves on spot (median 0.704 against 0.699) and falls on USD-M (0.584
+  against 0.619). The estimate on 8 pair-markets above had suggested a fall of 0.03 on
+  both markets.
+* On 27 of the 59 USD-M pairs, and on no spot pair, the fit puts no weight on the Brownian
+  part: the variance of the centred flow is a single power law from 10 seconds to four
+  hours. The quadratic-variation ratio falls with the window on USD-M (median 0.64 at
+  10 seconds, 0.60 at 60 seconds), so the exponent depends on the time scale there. The
+  mixed model of the theory fits the spot flow better than the perpetual one (median log
+  error 0.05 against 0.12).
+* Three decisions of the development tests changed, in both directions: H1 on USD-M from
+  undecided to compatible, H3 on both markets from undecided to rejected
+  ([config/deviations.md](../../config/deviations.md), D4).

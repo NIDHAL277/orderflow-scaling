@@ -65,6 +65,12 @@ before any estimate on real data.
     every simulated case.
 * **Effect.** The control tests what it claims, and no estimate or test changes because of
   it.
+* **Outcome on the development year** (re-run of 2026-11-14, 60 spot and 59 USD-M pairs).
+  * The control's median is 0.500 on spot and 0.499 on USD-M; 90 % and 97 % of the pairs
+    are within 0.05 of 1/2 (0 % and 2 % before).
+  * The other pairs read 0.57 to 0.999. Their shuffled flow has almost no fractional part,
+    so the mixed model does not identify the exponent, and their intervals contain 1/2.
+  * No pair is both further than 0.05 from 1/2 and has an interval that excludes it.
 
 ## D4 — 2026-11-12: H0 on the flow centred day by day in proportion to volume
 
@@ -104,6 +110,20 @@ before any estimate on real data.
     either way.
 * **Effect.** H0 is lower by about 0.03 (median of 8 pair-markets); every development
   estimate, test and forecast that uses H0 is recomputed before `config-frozen`.
+* **Outcome on the development year** (re-run of 2026-11-14; the first run's files are
+  kept for comparison).
+  * H0, median across pairs: 0.704 on spot (0.699 before; per-pair change -0.035 to
+    +0.086, median +0.006) and 0.584 on USD-M (0.619 before; -0.124 to +0.004, median
+    -0.030). The variant `uncentred` reproduces the first run exactly.
+  * Principal and control H0 within 0.05 of each other: 36 of 58 pairs on spot (29
+    before), 28 of 59 on USD-M (38 before).
+  * Three decisions changed. H1 on USD-M went from undecided to compatible (mean gap
+    -0.029, then +0.006). H3 went from undecided to rejected on both markets: the joint
+    test now rejects, and the mean gaps (-0.257 and -0.430) were already far from zero.
+  * H1 on spot and H2 on both markets stay rejected. The forecast decisions F1-F3 are
+    unchanged (F1 and F3 do not use H0).
+  * The change moved decisions in both directions. The specification curve shows the
+    pre-registered estimator next to the new one.
 
 D3 and D4 were decided by the author on 2026-11-12, after reviewing the development
 results and before any estimate on the confirmation year. The other development findings
