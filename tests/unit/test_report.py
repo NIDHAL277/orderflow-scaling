@@ -20,6 +20,17 @@ def test_numbers_that_round_to_zero_carry_no_sign() -> None:
     assert count(47.0) == "47" and count(None) == "--" and count(3, 60) == "3 / 60"
 
 
+def test_control_agreement_labels() -> None:
+    from ofs.report.tables import control_agreement
+
+    assert control_agreement("primary", '{"counts": true}') == "yes"
+    assert control_agreement("primary", '{"counts": false}') == "no"
+    # deviation D2: a control biased beyond the margin is shown but does not decide
+    assert control_agreement("primary", {"counts": True, "control_descriptive": True}) == "exempt"
+    assert control_agreement("control", '{"counts": true}') == "--"
+    assert control_agreement("primary", None) == "--" and control_agreement("primary", "{}") == "--"
+
+
 def test_report_on_an_empty_store(tmp_path) -> None:
     project = make_project(tmp_path / "repo")
     paper = build_report(project, "confirmation", "quick", compile_pdf=False)
@@ -58,6 +69,7 @@ def test_report_with_results(tmp_path) -> None:
     text = tables["tests"]
     assert "H1" in text and "compatible" in text
     assert "H4" not in text and "H5" not in text  # levels have their own table
+    assert "Control agrees" in text and "exempt" in text  # H1, H2: deviation D2
     assert "H4" in tables["levels"] and "spot minus perpetual" in tables["levels"]
     assert tables["levels"].count("H5 & ") == 4  # one row per exponent, each named
     # the three relations on both markets; every prediction is admissible in this universe

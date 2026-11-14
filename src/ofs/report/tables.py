@@ -96,6 +96,25 @@ def count(value: object, of: object = None) -> str:
     return f"{int(value)} / {int(of)}" if isinstance(of, (int, float)) else str(int(value))
 
 
+def control_agreement(estimator_set: object, details: object) -> str:
+    """Tell whether the control estimators confirm a result of the principal ones.
+
+    ``yes`` / ``no``: same decision and a mean gap within the margin of the principal's
+    (the pre-registered condition for a result to count); ``exempt``: the control of that
+    exponent is biased by more than the margin in simulation and is only shown (deviation
+    D2); a dash on the rows of the control estimators themselves.
+    """
+    if estimator_set != "primary" or not details:
+        return "--"
+    flags = json.loads(details) if isinstance(details, str) else details
+    if not isinstance(flags, dict):
+        return "--"
+    if flags.get("control_descriptive"):
+        return "exempt"
+    counts = flags.get("counts")
+    return "--" if counts is None else ("yes" if counts else "no")
+
+
 def tests_table(tests: pl.DataFrame, path: Path) -> Path:
     """Table of the cross-sectional tests of the three relations (H1-H3)."""
     rows = []
@@ -116,6 +135,7 @@ def tests_table(tests: pl.DataFrame, path: Path) -> Path:
                     interval(r["gap_ci_low"], r["gap_ci_high"]),
                     tex(r["p_holm"], 4),
                     tex(decision_label(r["decision"])),
+                    control_agreement(r["estimator_set"], r["details"]),
                 ]
             )
     return write_table(
@@ -131,6 +151,7 @@ def tests_table(tests: pl.DataFrame, path: Path) -> Path:
             "95\\,\\% CI",
             r"$p$ (Holm)",
             "Decision",
+            "Control agrees",
         ],
         rows,
         "Cross-sectional tests of $Y=a_0+b_0H_0$ (H1: volume, H2: volatility, H3: impact). "
@@ -139,9 +160,11 @@ def tests_table(tests: pl.DataFrame, path: Path) -> Path:
         "joint Wald test rejects at 1\\,\\% and the mean gap exceeds 0.05, compatible if the "
         "test does not reject and the interval lies in $[-0.05, 0.05]$, undecided otherwise: "
         "either the test rejects a gap smaller than 0.05, or it does not reject while the "
-        "interval reaches beyond 0.05.",
+        "interval reaches beyond 0.05. Control agrees: the control estimators give the same "
+        "decision and a mean gap within 0.05 of the principal's, the condition for a result "
+        "to count; exempt where the control is only shown (deviation D2).",
         "tab:tests",
-        "lllrrrrcrl",
+        "lllrrrrcrll",
     )
 
 
