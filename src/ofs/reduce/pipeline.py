@@ -116,15 +116,29 @@ class Reducer:
 
     # ------------------------------------------------------------ pass 1
     def pass1(
-        self, asset: str, market: Market, day: dt.date, *, one_second: bool, raw: Path | None = None
+        self,
+        asset: str,
+        market: Market,
+        day: dt.date,
+        *,
+        one_second: bool,
+        raw: Path | None = None,
+        frame: pl.DataFrame | None = None,
     ) -> str:
-        """Windows and event-time statistics of one day from its raw file."""
+        """Windows and event-time statistics of one day from its raw file.
+
+        ``frame`` replaces the file: trades of another venue already in the columns of a
+        loaded aggTrades file (``ts_us``, ``price``, ``quantity``, ``is_buyer_maker``).
+        """
         if self.pass1_done(asset, market, day, one_second):
             return "skipped"
-        raw = raw or self.layout.raw_file(market, "aggTrades", asset, day)
-        if not raw.exists():
-            raise MissingRawFileError(str(raw))
-        df = read_aggtrades(raw).df
+        if frame is None:
+            raw = raw or self.layout.raw_file(market, "aggTrades", asset, day)
+            if not raw.exists():
+                raise MissingRawFileError(str(raw))
+            df = read_aggtrades(raw).df
+        else:
+            df = frame
         trades = TradeArrays.from_frame(df)
         eps_shuf = day_rng(self.cfg.seed, asset, market, day).permutation(trades.eps)
 

@@ -604,6 +604,51 @@ def changepoints(
         )
 
 
+@app.command("venue-bybit")
+def venue_bybit(
+    ctx: typer.Context,
+    to: DateOpt,
+    days: Annotated[int, typer.Option(help="Number of days ending at --to")] = 30,
+    market: MarketChoice = MarketChoice.all,
+    symbols: Annotated[list[str] | None, typer.Option("--symbol")] = None,
+    reps: Annotated[int, typer.Option(help="Bootstrap replicates per interval")] = 200,
+    keep_raw: Annotated[bool, typer.Option(help="Keep the downloaded files")] = False,
+) -> None:
+    """Exploratory: H0 on Bybit's public trades against Binance, same pairs and days.
+
+    Data under <data>/venues/bybit, apart from Binance's; outside the frozen protocol.
+    """
+    from ofs.protocol import ProtocolError, check_estimation_allowed
+    from ofs.venues import bybit
+
+    project = _project(ctx)
+    try:
+        check_estimation_allowed(project, "rolling")  # exploratory, like the rolling estimates
+    except ProtocolError as exc:
+        typer.echo(f"protocol: {exc}", err=True)
+        raise typer.Exit(code=2) from exc
+    end = to.date()
+    span = [end - dt.timedelta(days=k) for k in range(days - 1, -1, -1)]
+    chosen = symbols or [p.symbol for p in project.universe.top(5)]
+    markets = _markets(market)
+    root = project.data_dir / "venues" / "bybit"
+    for symbol in chosen:
+        for m in markets:
+            counts = bybit.reduce_days(project, root, symbol, m, span, keep_raw=keep_raw)
+            typer.echo(
+                f"{symbol:<12} {m:<5} reduced {counts['reduced']}, missing {counts['missing']}"
+            )
+    table = bybit.compare(project, root, chosen, markets, span, reps=reps)
+    out = root / f"h0_{span[0]:%Y%m%d}_{end:%Y%m%d}.parquet"
+    table.write_parquet(out)
+    for row in table.iter_rows(named=True):
+        typer.echo(
+            f"{row['symbol']:<12} {row['market']:<5} {row['venue']:<8} H0={row['h0']:.3f} "
+            f"[{row['ci_low']:.3f}, {row['ci_high']:.3f}] ({row['n_days']} days)"
+        )
+    typer.echo(f"written {out}")
+
+
 @app.command("collect-l2")
 def collect_l2(
     ctx: typer.Context,
