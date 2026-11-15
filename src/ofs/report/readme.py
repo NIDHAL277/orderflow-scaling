@@ -144,5 +144,5 @@ def update_readme(path: Path, block: str) -> bool:
         return False
     new = text[:start] + block + text[end + len(END) :]
     if new != text:
-        path.write_text(new, encoding="utf-8")
+        path.write_text(new, encoding="utf-8", newline="\n")  # LF on Windows too
     return True
