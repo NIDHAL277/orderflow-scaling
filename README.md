@@ -13,8 +13,23 @@ volume out of sample, and whether the roughness implied by order flow forecasts 
 the one measured on volatility ([docs/forecasting.md](docs/forecasting.md)).
 
 <!-- results:start -->
-> **Result:** *pending — the confirmatory tests run on the frozen confirmation sample
-> (2025-11-01 → 2026-10-31) after the tags `prereg-v1` and `config-frozen`.*
+
+**Result on the confirmation year** (2025-11-01 to 2026-10-31; 60 spot pairs, 59 perpetuals; configuration frozen before that year was used). The gap is the observed exponent minus the prediction, averaged over pairs, with its 95 % interval. A relation is *compatible* when the joint test does not reject and the interval lies within ±0.05, *rejected* when the test rejects and the gap exceeds 0.05, *undecided* otherwise.
+
+| Prediction | Spot | Perpetual |
+|---|---|---|
+| H1, volume roughness: `H_vol = H0 − 1/2` | rejected, gap −0.119 [−0.128, −0.099] | compatible, gap +0.001 [−0.012, +0.011] |
+| H2, volatility roughness: `H_σ = 2H0 − 3/2` | rejected, gap +0.148 [+0.310, +0.565] | rejected, gap +0.362 [+0.508, +0.782] |
+| H3, impact exponent, exploratory: `δ = 2 − 2H0` | rejected, gap −0.296 [−0.326, −0.275] † | undecided, gap −0.384 [−0.401, −0.359] † |
+
+Where an interval does not contain its gap, most estimates of that exponent sit on the lower bound of their range, so their bootstrap is lopsided; the paper's reading aids count these cases.
+
+† The control estimators find a gap that differs by more than 0.05: by the pre-registered rule this result does not count on its own.
+
+Forecasting the average of the next 22 days (mean QLIKE ratio, below 1: the model forecasts better): F1, the rough predictor against HAR for volatility: 0.730 (undecided) on spot, 0.730 (undecided) on perpetuals; F2, the order-flow H against the measured H for volatility: 1.014 (undecided) on spot, 0.996 (equivalent) on perpetuals; F3, the rough predictor against HAR for volume: 0.889 (undecided) on spot, 0.880 (undecided) on perpetuals.
+
+![Gap to each predicted relation, by market](docs/img/headline.png)
+
 <!-- results:end -->
 
 **At a glance**
