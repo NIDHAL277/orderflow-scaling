@@ -462,6 +462,8 @@ def venues(table: pl.DataFrame, path: Path, title: str) -> Path:
     """
     from matplotlib.lines import Line2D
 
+    from ofs.venues.bybit import at_bound
+
     ok = table.filter(pl.col("h0").is_finite()) if table.height else table
     if ok.height == 0:
         return _placeholder(path, "H0 on two venues", "run `ofs venue-bybit` first")
@@ -495,6 +497,18 @@ def venues(table: pl.DataFrame, path: Path, title: str) -> Path:
                     mew=1.0 if filled else 1.6,
                     zorder=3,
                 )
+                if at_bound(r["h0"]):  # not identified: say so next to the point
+                    high = r["h0"] > 0.5
+                    ax.annotate(
+                        "at the bound",
+                        (r["h0"], y),
+                        xytext=(-7 if high else 7, -6),
+                        textcoords="offset points",
+                        ha="right" if high else "left",
+                        va="top",
+                        fontsize=7,
+                        color=style.MUTED,
+                    )
         ax.set_title(style.MARKET_LABELS[market], loc="left", fontsize=9)
         ax.set_ylim(-0.6, len(symbols) - 0.4)
         ax.set_yticks(range(len(symbols)), list(reversed(symbols)))

@@ -19,12 +19,13 @@ from __future__ import annotations
 
 import datetime as dt
 import gzip
+import http.client
 import io
 import math
 import time
 import urllib.error
 import urllib.request
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -48,7 +49,10 @@ VENUE_SCHEMA = {
     "h0": pl.Float64,
     "ci_low": pl.Float64,
     "ci_high": pl.Float64,
+    "trades_per_day": pl.Float64,
 }
+H0_RANGE = (0.001, 0.999)  # search range of the principal H0 estimator
+BOUND_TOLERANCE = 0.002
 
 
 def url(market: Market, symbol: str, day: dt.date) -> str:
@@ -63,22 +67,34 @@ def raw_path(root: Path, market: Market, symbol: str, day: dt.date) -> Path:
     return root / "raw" / market / symbol / f"{symbol}_{day.isoformat()}.csv.gz"
 
 
-def fetch(src: str, dest: Path, retries: int = 4, pause_s: float = 5.0) -> Path:
-    """Download ``src`` to ``dest`` unless present; the gzip stream must be complete.
+class DownloadError(OSError):
+    """A file of the archive could not be fetched completely, after every retry."""
 
-    Raises ``FileNotFoundError`` at once when the archive has no such file.
+
+def fetch(src: str, dest: Path, retries: int = 5, pause_s: float = 5.0) -> Path:
+    """Download ``src`` to ``dest`` unless present; the file must be complete.
+
+    A connection closed early ends the read without an error, so the size is compared
+    with the announced one and the gzip stream is read to its end. Raises
+    ``FileNotFoundError`` at once when the archive has no such file, and
+    :class:`DownloadError` when every attempt failed.
     """
     if dest.exists():
         return dest
     dest.parent.mkdir(parents=True, exist_ok=True)
     tmp = dest.with_name(dest.name + ".part")
+    reason = ""
     for attempt in range(retries):
         try:
             request = urllib.request.Request(src, headers={"User-Agent": USER_AGENT})
             with urllib.request.urlopen(request, timeout=120) as response, tmp.open("wb") as fh:
+                expected = response.headers.get("Content-Length")
                 while chunk := response.read(1 << 20):
                     fh.write(chunk)
-            with gzip.open(tmp) as stream:  # a truncated file raises EOFError here
+            size = tmp.stat().st_size
+            if expected is not None and size != int(expected):
+                raise EOFError(f"{size} of {expected} bytes received")
+            with gzip.open(tmp) as stream:  # a truncated stream raises EOFError here
                 while stream.read(1 << 22):
                     pass
             tmp.replace(dest)
@@ -87,14 +103,13 @@ def fetch(src: str, dest: Path, retries: int = 4, pause_s: float = 5.0) -> Path:
             tmp.unlink(missing_ok=True)
             if exc.code == 404:
                 raise FileNotFoundError(src) from exc
-            if attempt == retries - 1:
-                raise
-        except (OSError, EOFError):
+            reason = f"HTTP {exc.code}"
+        except (OSError, EOFError, http.client.HTTPException) as exc:
             tmp.unlink(missing_ok=True)
-            if attempt == retries - 1:
-                raise
-        time.sleep(pause_s * 2**attempt)
-    raise AssertionError("unreachable")
+            reason = repr(exc)[:200]
+        if attempt < retries - 1:
+            time.sleep(pause_s * 2**attempt)
+    raise DownloadError(f"{src}: {reason}")
 
 
 def read_trades(path: Path, market: Market) -> pl.DataFrame:
@@ -158,13 +173,15 @@ def reduce_days(
     """Download and reduce ``days`` of one pair into the venue root; idempotent.
 
     Pairs among the ``one_second_top_n`` most liquid of the universe get 1-second windows,
-    as on Binance.
+    as on Binance. A day absent from the archive counts as ``missing`` and a day whose
+    file cannot be fetched completely as ``failed``: both are skipped, and a later run
+    tries them again.
     """
     log = get_logger(stage="bybit", symbol=symbol, market=market)
     reducer = Reducer(project, DataLayout(root))
     top = {p.symbol for p in project.universe.top(project.pipeline.reduce.one_second_top_n)}
     one_second = symbol in top
-    counts = {"reduced": 0, "missing": 0, "pass2": 0}
+    counts = {"reduced": 0, "missing": 0, "failed": 0, "pass2": 0}
     for day in days:
         if reducer.pass1_done(symbol, market, day, one_second):
             continue
@@ -174,6 +191,10 @@ def reduce_days(
         except FileNotFoundError:
             counts["missing"] += 1
             log.warning("missing", day=day.isoformat())
+            continue
+        except DownloadError as exc:
+            counts["failed"] += 1
+            log.warning("download_failed", day=day.isoformat(), reason=str(exc)[:200])
             continue
         frame = read_trades(path, market)
         reducer.pass1(symbol, market, day, one_second=one_second, frame=frame)
@@ -197,24 +218,42 @@ def block_weights(n: int, block: int, rng: np.random.Generator) -> np.ndarray[An
     return np.bincount(idx, minlength=n).astype(np.float64)
 
 
-def h0_on_venue(
-    project: Project,
-    layout: DataLayout,
-    symbol: str,
-    market: Market,
-    days: Sequence[dt.date],
-    *,
-    reps: int = 200,
-    block: int = 5,
-    seed: int = 0,
-    min_days: int = 20,
-) -> dict[str, Any]:
-    """Principal ``H0`` of one pair on one data root, with a moving-block interval."""
+def at_bound(h0: float | None) -> bool:
+    """Whether an estimate sits on a bound of the search range: not identified."""
+    if h0 is None or not math.isfinite(h0):
+        return False
+    return h0 <= H0_RANGE[0] + BOUND_TOLERANCE or h0 >= H0_RANGE[1] - BOUND_TOLERANCE
+
+
+def _load(
+    project: Project, layout: DataLayout, symbol: str, market: Market, days: Sequence[dt.date]
+) -> tuple[Any, Any, dict[str, pl.DataFrame]]:
+    """Principal estimator, its daily features and the daily statistics of one data root."""
     from ofs.inference.changepoint import principal_h0
 
     est = principal_h0(project)
-    feats = est.features(load_bundle(layout, symbol, market, days, kinds=H0_KINDS), days)
-    used = np.any(feats.matrix != 0, axis=1) if feats.matrix.size else np.zeros(0, dtype=bool)
+    bundle = load_bundle(layout, symbol, market, days, kinds=H0_KINDS)
+    return est, est.features(bundle, days), bundle
+
+
+def _used(feats: Any, n_days: int) -> np.ndarray[Any, Any]:
+    """Days that contribute to the estimator's features."""
+    if not feats.matrix.size:
+        return np.zeros(n_days, dtype=bool)
+    return np.asarray(np.any(feats.matrix != 0, axis=1), dtype=bool)
+
+
+def _estimate(
+    est: Any,
+    feats: Any,
+    used: np.ndarray[Any, Any],
+    *,
+    reps: int,
+    block: int,
+    seed: int,
+    min_days: int,
+) -> dict[str, Any]:
+    """Fit on the days ``used``, with a moving-block bootstrap interval over those days."""
     n = int(used.sum())
     row: dict[str, Any] = {"n_days": n, "h0": math.nan, "ci_low": math.nan, "ci_high": math.nan}
     if n < min_days:
@@ -235,6 +274,36 @@ def h0_on_venue(
     return row
 
 
+def h0_on_venue(
+    project: Project,
+    layout: DataLayout,
+    symbol: str,
+    market: Market,
+    days: Sequence[dt.date],
+    *,
+    reps: int = 200,
+    block: int = 5,
+    seed: int = 0,
+    min_days: int = 20,
+) -> dict[str, Any]:
+    """Principal ``H0`` of one pair on one data root, with a moving-block interval."""
+    est, feats, _ = _load(project, layout, symbol, market, days)
+    used = _used(feats, len(days))
+    return _estimate(est, feats, used, reps=reps, block=block, seed=seed, min_days=min_days)
+
+
+def _trades_per_day(
+    bundle: dict[str, pl.DataFrame], days: Sequence[dt.date], used: np.ndarray[Any, Any]
+) -> float:
+    """Mean number of trades a day over the days ``used``."""
+    summary = bundle.get("day_summary")
+    keep = [d for d, u in zip(days, used, strict=True) if u]
+    if summary is None or summary.height == 0 or not keep:
+        return math.nan
+    mean = summary.filter(pl.col("date").is_in(keep))["n_trades"].cast(pl.Float64).mean()
+    return float(mean) if isinstance(mean, float) else math.nan
+
+
 def compare(
     project: Project,
     root: Path,
@@ -243,15 +312,35 @@ def compare(
     days: Sequence[dt.date],
     *,
     reps: int = 200,
+    min_days: int = 20,
 ) -> pl.DataFrame:
-    """``H0`` of each pair on Binance (the project's data) and on Bybit, same days."""
+    """``H0`` of each pair on Binance (the project's data) and on Bybit.
+
+    Both venues are fitted on the same days, those with data on each of them, and with
+    the same bootstrap resamples of those days.
+    """
     layouts = {"binance": DataLayout(project.data_dir), "bybit": DataLayout(root)}
     rows = []
     for symbol in symbols:
         for market in markets:
-            for venue, layout in layouts.items():
-                stats = h0_on_venue(project, layout, symbol, market, days, reps=reps)
-                rows.append({"symbol": symbol, "market": market, "venue": venue, **stats})
+            loaded = {
+                venue: _load(project, layout, symbol, market, days)
+                for venue, layout in layouts.items()
+            }
+            common = np.logical_and.reduce(
+                [_used(feats, len(days)) for _, feats, _ in loaded.values()]
+            )
+            for venue, (est, feats, bundle) in loaded.items():
+                stats = _estimate(est, feats, common, reps=reps, block=5, seed=0, min_days=min_days)
+                rows.append(
+                    {
+                        "symbol": symbol,
+                        "market": market,
+                        "venue": venue,
+                        **stats,
+                        "trades_per_day": _trades_per_day(bundle, days, common),
+                    }
+                )
     return pl.DataFrame(rows, schema=VENUE_SCHEMA)
 
 
@@ -261,7 +350,63 @@ def _cell(row: dict[str, Any] | None) -> str:
     text = f"{row['h0']:.3f}"
     if row["ci_low"] is not None and math.isfinite(row["ci_low"]):
         text += f" [{row['ci_low']:.3f}, {row['ci_high']:.3f}]"
-    return text
+    return text + (" †" if at_bound(row["h0"]) else "")
+
+
+def _thousands(row: dict[str, Any] | None) -> str:
+    value = row.get("trades_per_day") if row else None
+    return f"{value / 1000:,.0f}" if value is not None and math.isfinite(value) else "–"
+
+
+Row = dict[str, Any]
+
+
+def _pairs(table: pl.DataFrame) -> Iterator[tuple[str, str, Row | None, Row | None]]:
+    """Each pair and market with its Binance row and its Bybit row."""
+    if table.height == 0:
+        return
+    for symbol, market in table.select("symbol", "market").unique(maintain_order=True).iter_rows():
+        found = {
+            r["venue"]: r
+            for r in table.filter(
+                (pl.col("symbol") == symbol) & (pl.col("market") == market)
+            ).iter_rows(named=True)
+        }
+        yield symbol, market, found.get("binance"), found.get("bybit")
+
+
+def _difference(a: Row | None, b: Row | None) -> tuple[float | None, bool]:
+    """Binance minus Bybit when both estimates exist, and whether one sits on a bound."""
+    if a is None or b is None or not (math.isfinite(a["h0"]) and math.isfinite(b["h0"])):
+        return None, False
+    return float(a["h0"] - b["h0"]), at_bound(a["h0"]) or at_bound(b["h0"])
+
+
+def summary(table: pl.DataFrame) -> dict[str, dict[str, float]]:
+    """Per market: pairs compared, mean and largest absolute difference (Binance − Bybit).
+
+    Pairs with a missing estimate, or one on a bound of the search range, are left out.
+    """
+    values: dict[str, list[float]] = {}
+    for _, market, a, b in _pairs(table):
+        diff, bound = _difference(a, b)
+        if diff is not None and not bound:
+            values.setdefault(market, []).append(diff)
+    return {
+        market: {
+            "pairs": float(len(v)),
+            "mean": sum(v) / len(v),
+            "max_abs": max(abs(x) for x in v),
+        }
+        for market in ("spot", "um")
+        if (v := values.get(market))
+    }
+
+
+def latest_table(data_dir: Path) -> pl.DataFrame | None:
+    """Return the most recent comparison stored by ``ofs venue-bybit``, if any."""
+    files = sorted((data_dir / "venues" / "bybit").glob("h0_*.parquet"))
+    return pl.read_parquet(files[-1]) if files else None
 
 
 def results_block(table: pl.DataFrame, *, period: str, figure: str) -> str:
@@ -271,37 +416,34 @@ def results_block(table: pl.DataFrame, *, period: str, figure: str) -> str:
     lines = [
         START,
         "",
-        f"Days {period}. Principal `H0` estimator on each venue; 95 % moving-block bootstrap "
-        "interval over days, without the calibration of the confirmatory intervals. "
-        "Difference: Binance minus Bybit.",
+        f"Days {period}, restricted for each pair to the days present on both venues. "
+        "Principal `H0` estimator; 95 % moving-block bootstrap interval over days, without "
+        "the calibration of the confirmatory intervals. Difference: Binance minus Bybit.",
         "",
-        "| Pair | Market | Binance | Bybit | Difference | Days (Binance / Bybit) |",
-        "|---|---|---|---|---|---|",
+        "| Pair | Market | Binance | Bybit | Difference | Days "
+        "| Trades a day, thousands (Binance / Bybit) |",
+        "|---|---|---|---|---|---|---|",
     ]
     names = {"spot": "spot", "um": "perpetual"}
-    diffs: dict[str, list[float]] = {}
-    keys = table.select("symbol", "market").unique(maintain_order=True).iter_rows()
-    for symbol, market in keys:
-        found: dict[str, dict[str, Any]] = {
-            r["venue"]: r
-            for r in table.filter(
-                (pl.col("symbol") == symbol) & (pl.col("market") == market)
-            ).iter_rows(named=True)
-        }
-        a, b = found.get("binance"), found.get("bybit")
-        diff = "–"
-        if a and b and math.isfinite(a["h0"]) and math.isfinite(b["h0"]):
-            diff = f"{a['h0'] - b['h0']:+.3f}".replace("-", "−")
-            diffs.setdefault(market, []).append(a["h0"] - b["h0"])
-        days = f"{a['n_days'] if a else 0} / {b['n_days'] if b else 0}"
+    flagged = False
+    for symbol, market, a, b in _pairs(table):
+        diff, bound = _difference(a, b)
+        flagged = flagged or bound
+        shown = "–" if diff is None else f"{diff:+.3f}".replace("-", "−")
+        days = str(a["n_days"]) if a is not None else "–"
         lines.append(
-            f"| {symbol} | {names.get(market, market)} | {_cell(a)} | {_cell(b)} | {diff} | {days} |"
+            f"| {symbol} | {names.get(market, market)} | {_cell(a)} | {_cell(b)} | {shown} "
+            f"| {days} | {_thousands(a)} / {_thousands(b)} |"
         )
-    for market, values in diffs.items():
-        mean = f"{sum(values) / len(values):+.3f}".replace("-", "−")
-        lines.append(
-            f"| Mean of {len(values)} pairs | {names.get(market, market)} | | | {mean} | |"
-        )
+    for market, stats in summary(table).items():
+        mean = f"{stats['mean']:+.3f}".replace("-", "−")
+        lines.append(f"| Mean of {int(stats['pairs'])} pairs | {names[market]} | | | {mean} | | |")
+    if flagged:
+        lines += [
+            "",
+            f"† Estimate on a bound of the search range ({H0_RANGE[0]} to {H0_RANGE[1]}): not "
+            "identified on these days, and left out of the mean difference.",
+        ]
     lines += ["", f"![H0 of the same pairs on Binance and Bybit]({figure})", "", END]
     return "\n".join(lines)
 

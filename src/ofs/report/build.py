@@ -171,7 +171,26 @@ def _write_macros(
             if row.height and row["ratio"][0] is not None:
                 text = f"{row['ratio'][0]:.3f} ({style.decision_label(row['decision'][0])})"
         lines.append(rf"\newcommand{{\resultF{name}}}{{{text}}}")
+    lines += _venue_macros(project)
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def _venue_macros(project: Project | None) -> list[str]:
+    r"""Macros ``\venueDiffPerp`` etc. from the stored Bybit comparison (exploratory)."""
+    from ofs.venues import bybit
+
+    table = bybit.latest_table(project.data_dir) if project is not None else None
+    stats = bybit.summary(table) if table is not None else {}
+    lines = []
+    for market, tag in (("um", "Perp"), ("spot", "Spot")):
+        s = stats.get(market)
+        values = {
+            f"venuePairs{tag}": str(int(s["pairs"])) if s else "pending",
+            f"venueDiff{tag}": f"${s['mean']:+.3f}$" if s else "pending",
+            f"venueMaxDiff{tag}": f"{s['max_abs']:.3f}" if s else "pending",
+        }
+        lines += [rf"\newcommand{{\{name}}}{{{value}}}" for name, value in values.items()]
+    return lines
 
 
 def _front_page(

@@ -639,7 +639,8 @@ def venue_bybit(
         for m in markets:
             counts = bybit.reduce_days(project, root, symbol, m, span, keep_raw=keep_raw)
             typer.echo(
-                f"{symbol:<12} {m:<5} reduced {counts['reduced']}, missing {counts['missing']}"
+                f"{symbol:<12} {m:<5} reduced {counts['reduced']}, missing {counts['missing']}, "
+                f"failed {counts['failed']}"
             )
     table = bybit.compare(project, root, chosen, markets, span, reps=reps)
     out = root / f"h0_{span[0]:%Y%m%d}_{end:%Y%m%d}.parquet"

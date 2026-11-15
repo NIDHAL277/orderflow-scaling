@@ -19,6 +19,12 @@
 \providecommand{\resultHOneBoth}{pending}
 \providecommand{\resultHTwoBoth}{pending}
 \providecommand{\resultHThreeBoth}{pending}
+\providecommand{\venuePairsPerp}{pending}
+\providecommand{\venueDiffPerp}{pending}
+\providecommand{\venueMaxDiffPerp}{pending}
+\providecommand{\venuePairsSpot}{pending}
+\providecommand{\venueDiffSpot}{pending}
+\providecommand{\venueMaxDiffSpot}{pending}
 \providecommand{\nPairs}{60}
 \providecommand{\nPerps}{59}
 \providecommand{\pairDays}{pending}
@@ -412,7 +418,13 @@ perpetual).}
 The impact exponent rests on a proxy: runs of same-side trades mix independent traders, and
 their duration is not the execution horizon of a meta-order. All assets trade on one
 exchange; crypto order flow fragments across venues, and the persistence measured on one
-venue need not equal that of the aggregate flow. Twelve months is short for daily-horizon
+venue need not equal that of the aggregate flow. An exploratory comparison with Bybit's
+public trades over one month (documentation, \emph{A second venue}) finds the same
+persistence on perpetuals: over \venuePairsPerp{} pairs, Binance minus Bybit averages
+\venueDiffPerp{} and never exceeds \venueMaxDiffPerp{} in absolute value. On spot, where
+Bybit trades several times less, the estimates are less precise and differ more
+(\venueDiffSpot{} on average over \venuePairsSpot{} pairs).
+Twelve months is short for daily-horizon
 roughness: on one year of daily data the estimate of $\Hs$ often sits on the lower bound
 of its range (table~\ref{tab:reading}), which the five-year variant only partly addresses
 since the history lacks the trades needed for $\Hz$. The perpetual trade files miss a small share of fills from mid-2025;

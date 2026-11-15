@@ -15,6 +15,7 @@ import pytest
 from helpers import DAY, make_trades
 from ofs.config import Project
 from ofs.paths import DataLayout
+from ofs.reduce.pipeline import Reducer
 from ofs.venues import bybit
 
 
@@ -78,7 +79,7 @@ def test_fetch_keeps_only_complete_files(tmp_path: Path, monkeypatch) -> None:
 
     cut = tmp_path / "src" / "cut.csv.gz"
     cut.write_bytes(good.read_bytes()[:-12])  # truncated gzip stream
-    with pytest.raises((EOFError, OSError)):
+    with pytest.raises(bybit.DownloadError, match="EOFError"):
         bybit.fetch(cut.as_uri(), tmp_path / "out" / "cut.csv.gz", retries=2, pause_s=0)
     assert not (tmp_path / "out" / "cut.csv.gz").exists()
     assert not list((tmp_path / "out").glob("*.part"))
@@ -89,6 +90,17 @@ def test_fetch_keeps_only_complete_files(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr(bybit.urllib.request, "urlopen", not_found)
     with pytest.raises(FileNotFoundError):
         bybit.fetch("https://public.bybit.com/x", tmp_path / "out" / "x.csv.gz", pause_s=0)
+
+
+def test_a_file_that_cannot_be_fetched_skips_its_day(
+    project: Project, tmp_path: Path, monkeypatch
+) -> None:
+    def broken(src: str, dest: Path, **kwargs: object) -> Path:
+        raise bybit.DownloadError(src)
+
+    monkeypatch.setattr(bybit, "fetch", broken)
+    counts = bybit.reduce_days(project, tmp_path / "venue", "AAAUSDT", "spot", [DAY])
+    assert counts == {"reduced": 0, "missing": 0, "failed": 1, "pass2": 0}
 
 
 def test_block_weights_draw_every_day_count_once_in_total() -> None:
@@ -117,7 +129,7 @@ def test_reduce_and_estimate_on_synthetic_bybit_files(project: Project, tmp_path
         with gzip.open(path, "wb") as fh:
             csv.write_csv(fh)
     counts = bybit.reduce_days(project, root, "AAAUSDT", "spot", days)
-    assert counts == {"reduced": 4, "missing": 0, "pass2": 4}
+    assert counts == {"reduced": 4, "missing": 0, "failed": 0, "pass2": 4}
     assert not list((root / "raw").rglob("*.csv.gz"))  # raw files removed after pass 2
     again = bybit.reduce_days(project, root, "AAAUSDT", "spot", days)
     assert again["reduced"] == 0  # idempotent
@@ -128,12 +140,25 @@ def test_reduce_and_estimate_on_synthetic_bybit_files(project: Project, tmp_path
     short = bybit.h0_on_venue(project, DataLayout(root), "AAAUSDT", "spot", days, min_days=5)
     assert math.isnan(short["h0"])  # too few days: no estimate
 
+    # the same pair on the main data root for three of the four days: compared on those three
+    main = Reducer(project)
+    for k, day in enumerate(days[:3]):
+        frame = make_trades(day, n=4000, seed=10 + k)
+        main.pass1("AAAUSDT", "spot", day, one_second=False, frame=frame)
+    for day in days[:3]:
+        main.pass2("AAAUSDT", "spot", day)
+    table = bybit.compare(project, root, ["AAAUSDT"], ["spot"], days, reps=5, min_days=3)
+    assert table["venue"].to_list() == ["binance", "bybit"]
+    assert table["n_days"].to_list() == [3, 3]  # only the days present on both venues
+    assert all(math.isfinite(h) for h in table["h0"].to_list())
+    assert all(n > 0 for n in table["trades_per_day"].to_list())
+
 
 def venue_table() -> pl.DataFrame:
     rows = []
     for symbol, base in (("AAAUSDT", 0.70), ("BBBUSDT", 0.66)):
         for market, shift in (("spot", 0.0), ("um", -0.1)):
-            for venue, d in (("binance", 0.0), ("bybit", 0.02)):
+            for venue, d, trades in (("binance", 0.0, 1.5e6), ("bybit", 0.02, 3.0e5)):
                 h = base + shift + d
                 rows.append(
                     {
@@ -144,10 +169,45 @@ def venue_table() -> pl.DataFrame:
                         "h0": h,
                         "ci_low": h - 0.02,
                         "ci_high": h + 0.02,
+                        "trades_per_day": trades,
                     }
                 )
-    rows[-1].update(n_days=4, h0=math.nan, ci_low=math.nan, ci_high=math.nan)  # too few days
+    rows[3].update(h0=0.999, ci_low=0.49, ci_high=0.999)  # AAAUSDT perpetual on Bybit: bound
+    for row in rows[-2:]:  # BBBUSDT perpetual: too few common days on both venues
+        row.update(n_days=4, h0=math.nan, ci_low=math.nan, ci_high=math.nan)
     return pl.DataFrame(rows, schema=bybit.VENUE_SCHEMA)
+
+
+def test_summary_and_macros_of_the_stored_comparison(project: Project, tmp_path: Path) -> None:
+    from ofs.report.build import _write_macros
+
+    table = venue_table()
+    stats = bybit.summary(table)
+    assert list(stats) == ["spot"]  # perpetual: one pair on the bound, one without days
+    assert stats["spot"]["pairs"] == 2
+    assert stats["spot"]["mean"] == pytest.approx(-0.02)
+    assert stats["spot"]["max_abs"] == pytest.approx(0.02)
+    assert bybit.summary(table.clear()) == {}
+
+    assert bybit.latest_table(project.data_dir) is None
+    folder = project.data_dir / "venues" / "bybit"
+    folder.mkdir(parents=True)
+    table.clear().write_parquet(folder / "h0_20260901_20260930.parquet")
+    table.write_parquet(folder / "h0_20261002_20261031.parquet")
+    latest = bybit.latest_table(project.data_dir)
+    assert latest is not None and latest.height == table.height  # the most recent period
+
+    _write_macros(pl.DataFrame(), tmp_path / "macros.tex", project)
+    macros = (tmp_path / "macros.tex").read_text(encoding="utf-8")
+    assert "\\newcommand{\\venueDiffSpot}{$-0.020$}" in macros
+    assert "\\newcommand{\\venuePairsSpot}{2}" in macros
+    assert "\\newcommand{\\venueMaxDiffSpot}{0.020}" in macros
+    assert "\\newcommand{\\venuePairsPerp}{pending}" in macros
+
+
+def test_bound_detection() -> None:
+    assert bybit.at_bound(0.999) and bybit.at_bound(0.001) and bybit.at_bound(0.9975)
+    assert not bybit.at_bound(0.99) and not bybit.at_bound(math.nan) and not bybit.at_bound(None)
 
 
 def test_results_block_and_figure(project: Project, tmp_path: Path) -> None:
@@ -158,12 +218,14 @@ def test_results_block_and_figure(project: Project, tmp_path: Path) -> None:
     block = bybit.results_block(table, period="2026-10-02 to 2026-10-31", figure="img/v.png")
     assert block.startswith(START) and block.endswith(END)
     assert (
-        "| AAAUSDT | spot | 0.700 [0.680, 0.720] | 0.720 [0.700, 0.740] | −0.020 | 30 / 30 |"
-        in block
-    )
-    assert "| BBBUSDT | perpetual | 0.560 [0.540, 0.580] | not enough days | – | 30 / 4 |" in block
-    assert "| Mean of 2 pairs | spot | | | −0.020 | |" in block
-    assert "| Mean of 1 pairs | perpetual |" in block
+        "| AAAUSDT | spot | 0.700 [0.680, 0.720] | 0.720 [0.700, 0.740] | −0.020 | 30 "
+        "| 1,500 / 300 |"
+    ) in block
+    assert "| 0.600 [0.580, 0.620] | 0.999 [0.490, 0.999] † | −0.399 | 30 |" in block
+    assert "| BBBUSDT | perpetual | not enough days | not enough days | – | 4 |" in block
+    assert "| Mean of 2 pairs | spot | | | −0.020 | | |" in block
+    assert block.count("Mean of") == 1  # perpetual: one pair at the bound, one without days
+    assert "† Estimate on a bound of the search range (0.001 to 0.999)" in block
     assert "(img/v.png)" in block
 
     out = figures.venues(table, tmp_path / "v.png", "title")
