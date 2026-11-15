@@ -59,7 +59,17 @@ def test_store_on_empty_directory(tmp_path) -> None:
     assert store.estimates().height == 0 and store.tests().height == 0
     assert store.assets().height == 0
     h = store.health()
-    assert h["last_ok_day"] is None and h["validation_failures"] == 0
+    assert h["last_ok_day"] is None and h["validation_failures"] is None  # never recorded
+    assert store.validation_failures() == 0
+
+
+def test_health_reports_the_count_the_daily_run_recorded(tmp_path) -> None:
+    from ofs.monitoring import write_status
+
+    store = Store(tmp_path / "data")
+    store.layout.status_file.parent.mkdir(parents=True, exist_ok=True)
+    write_status(store.layout.status_file, validation_failures=3)
+    assert store.health()["validation_failures"] == 3
 
 
 def test_api_endpoints(filled: Project) -> None:

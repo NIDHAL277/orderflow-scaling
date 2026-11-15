@@ -67,6 +67,18 @@ class Store:
         """Every validation report (cached, see ``read_table_cached``)."""
         return read_table_cached(self.layout.validation_dir, self.layout.validation_cache)
 
+    def validation_failures(self) -> int:
+        """Pair-days that failed a blocking validation control (reads every report)."""
+        val = self.validation()
+        if not val.height:
+            return 0
+        return (
+            val.filter(pl.col("blocking") & ~pl.col("passed"))
+            .select(["symbol", "market", "date"])
+            .unique()
+            .height
+        )
+
     def quality(self) -> pl.DataFrame:
         """Data-quality report per pair and market (``ofs quality``, objective O1)."""
         return self._read(self.layout.quality_dir / "quality.parquet")
@@ -195,7 +207,13 @@ class Store:
         )
 
     def health(self) -> dict[str, Any]:
-        """Pipeline health: status, last day, counts, failures, disk."""
+        """Pipeline health: status, last day, counts, failures, disk.
+
+        Cheap enough for a health check every minute: the status file and the manifest.
+        The number of pair-days blocked by validation is the one the last daily run
+        recorded; counting it reads every validation report (about 86,000 files for two
+        years), see :meth:`validation_failures`.
+        """
         man = self.manifest()
         status = read_status(self.layout.status_file)
         counts: dict[str, int] = {}
@@ -204,15 +222,8 @@ class Store:
         last_day: dt.date | None = None
         if man.height and (man["status"] == "ok").any():
             last_day = man.filter(pl.col("status") == "ok")["date"].max()  # type: ignore[assignment]
-        val = self.validation()
-        failed = 0
-        if val.height:
-            failed = (
-                val.filter(pl.col("blocking") & ~pl.col("passed"))
-                .select(["symbol", "market", "date"])
-                .unique()
-                .height
-            )
+        recorded = status.get("validation_failures")
+        failed = recorded if isinstance(recorded, int) else None
         return {
             "status": "ok" if not status.get("last_error") else "degraded",
             "last_ok_day": last_day.isoformat() if isinstance(last_day, dt.date) else None,

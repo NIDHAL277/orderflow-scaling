@@ -17,7 +17,8 @@ def health_page() -> None:
     c = st.columns(4)
     c[0].metric("Status", "🟢 ok" if h["status"] == "ok" else "🟠 degraded")
     c[1].metric("Last day verified", h.get("last_ok_day") or "–")
-    c[2].metric("Days blocked by validation", h.get("validation_failures", 0))
+    failures = h.get("validation_failures")
+    c[2].metric("Days blocked by validation", "–" if failures is None else failures)
     c[3].metric("Disk used", f"{h.get('disk_used_fraction', 0):.0%}")
     if pipe.get("last_error"):
         st.warning(f"⚠️ Last run: {pipe['last_error']}")

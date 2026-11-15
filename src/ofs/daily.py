@@ -31,6 +31,7 @@ from ofs.monitoring import disk_fraction, ping, read_status, write_status
 from ofs.paths import DataLayout
 from ofs.pipeline import apply_corrections, run_range
 from ofs.protocol import ProtocolError, check_estimation_allowed
+from ofs.store import Store
 
 EXIT_OK = 0
 EXIT_RETRY = 75
@@ -170,6 +171,7 @@ def run_daily(
             last_run=now.isoformat(),
             last_day=day.isoformat(),
             waiting_files=0,
+            validation_failures=Store(project.data_dir).validation_failures(),  # for /health
             counts=dict(summary.counts),
             blocked=summary.blocked[:50],
             rolling_estimates=rolling_ok,

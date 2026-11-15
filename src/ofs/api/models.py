@@ -15,7 +15,9 @@ class Health(BaseModel):
     version: str
     last_ok_day: dt.date | None = Field(None, description="Most recent day downloaded and verified")
     manifest_counts: dict[str, int] = Field(default_factory=dict)
-    validation_failures: int = 0
+    validation_failures: int | None = Field(
+        None, description="Pair-days blocked by a validation control, at the last daily run"
+    )
     disk_used_fraction: float | None = None
     pipeline: dict[str, Any] = Field(default_factory=dict)
 
