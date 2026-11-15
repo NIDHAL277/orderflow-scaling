@@ -25,6 +25,12 @@ docker compose pull && docker compose up -d
 docker compose exec pipeline ofs status
 ```
 
+Building behind a TLS-inspecting proxy or antivirus (one that re-signs HTTPS with its own
+root, such as Avast's "Web/Mail Shield"): the build's downloads fail with
+`curl: (60) unable to get local issuer certificate`. Export that root certificate as PEM
+and pass it as a build secret, which only the local image then trusts:
+`docker build --secret id=extra_ca,src=root.pem -t orderflow-scaling:local .`
+
 ## Daily run (`ofs daily`, cron `30 2-12 * * *`)
 
 1. 02:30 UTC: download yesterday's files; if absent, exit code 75 and retry every hour.

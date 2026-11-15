@@ -16,6 +16,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
+    UV_NATIVE_TLS=1 \
+    UV_SYSTEM_CERTS=1 \
     UV_PROJECT_ENVIRONMENT=/opt/venv \
     PATH=/opt/venv/bin:$PATH \
     TZ=UTC
@@ -23,6 +25,15 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 RUN apt-get update \
  && apt-get install -y --no-install-recommends ca-certificates curl rclone \
  && rm -rf /var/lib/apt/lists/*
+
+# Optional extra root certificate, for a build behind a TLS-inspecting proxy or antivirus
+# (docs/operations.md): docker build --secret id=extra_ca,src=<root.pem> .
+# Without the secret (CI) this step does nothing.
+RUN --mount=type=secret,id=extra_ca,required=false \
+    if [ -s /run/secrets/extra_ca ]; then \
+      cp /run/secrets/extra_ca /usr/local/share/ca-certificates/extra-ca.crt \
+      && update-ca-certificates; \
+    fi
 
 RUN set -eux; \
     curl -fsSLo /usr/local/bin/supercronic \
