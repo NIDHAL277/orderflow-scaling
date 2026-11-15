@@ -36,7 +36,6 @@ from __future__ import annotations
 import datetime as dt
 import math
 from collections.abc import Sequence
-from concurrent.futures import ProcessPoolExecutor
 from typing import Any, Literal
 
 import numpy as np
@@ -67,6 +66,7 @@ from ofs.logs import stage_event
 from ofs.paths import DataLayout
 from ofs.reduce.history import history_version, load_history_rv
 from ofs.schemas import FORECAST_EVAL, FORECAST_TESTS, FORECASTS
+from ofs.utils import process_pool
 from ofs.versioning import code_version
 
 ForecastSample = Literal["development", "confirmation"]
@@ -486,7 +486,7 @@ def run_forecasts(
     tg = tuple(targets)
     frames: list[pl.DataFrame] = []
     if jobs > 1:
-        with ProcessPoolExecutor(
+        with process_pool(
             max_workers=jobs, initializer=_init_worker, initargs=(project, refs)
         ) as pool:
             futures = [pool.submit(_work, a, m, sample, tg) for a, m in groups]

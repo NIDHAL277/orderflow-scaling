@@ -18,7 +18,7 @@ import os
 import pickle
 import shutil
 from collections.abc import Sequence
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures import as_completed
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -34,7 +34,7 @@ from ofs.io import read_parquets, write_parquet_atomic
 from ofs.logs import stage_event
 from ofs.paths import DataLayout
 from ofs.schemas import BOOTSTRAP, ESTIMATES
-from ofs.utils import as_float
+from ofs.utils import as_float, process_pool
 from ofs.versioning import code_version
 
 CONCORDANCE_MARGIN = 0.05
@@ -513,7 +513,7 @@ def run_estimates(
         )
 
     if jobs > 1 and todo:
-        with ProcessPoolExecutor(
+        with process_pool(
             max_workers=jobs, initializer=_init_worker, initargs=(project, plan, regimes)
         ) as pool:
             futures = {pool.submit(_work, a, m, sample): (a, m) for a, m in todo}

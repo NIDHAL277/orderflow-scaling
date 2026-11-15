@@ -15,7 +15,7 @@ import datetime as dt
 import math
 import time
 from collections.abc import Callable, Sequence
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures import as_completed
 from pathlib import Path
 from typing import Any, cast
 
@@ -54,6 +54,7 @@ from ofs.simulate.fbm import fgn, mixed_fgn
 from ofs.simulate.rough_vol import observed_prices, rough_bergomi
 from ofs.simulate.signs import lmf_signs
 from ofs.simulate.volume import rough_rate_day, synthetic_runs
+from ofs.utils import process_pool
 
 SIM_START = dt.date(2001, 1, 1)  # a Monday
 DAY_S = 86_400
@@ -629,7 +630,7 @@ def run_study(
         )
 
     if jobs > 1:
-        with ProcessPoolExecutor(
+        with process_pool(
             max_workers=jobs, initializer=configure_logging, initargs=logging_config()
         ) as pool:
             futures = {pool.submit(run_cell, *c, profile, sim, cfg): c for c in todo}

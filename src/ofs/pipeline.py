@@ -12,7 +12,7 @@ import datetime as dt
 import time
 from collections import Counter
 from collections.abc import Sequence
-from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -28,6 +28,7 @@ from ofs.paths import DataLayout
 from ofs.reduce.pipeline import MIN_PROFILE_DAYS, MissingRawFileError, Reducer
 from ofs.reduce.seasonality import window_days
 from ofs.schemas import PASS1_KINDS, PASS2_KINDS, PASS2_VC_KINDS
+from ofs.utils import process_pool
 from ofs.validate.checks import DayReport, run_checks
 from ofs.versioning import stage_version
 
@@ -204,9 +205,7 @@ def run_range(
         return [r.status for r in recs]
 
     pool = (
-        ProcessPoolExecutor(
-            max_workers=jobs, initializer=configure_logging, initargs=logging_config()
-        )
+        process_pool(max_workers=jobs, initializer=configure_logging, initargs=logging_config())
         if jobs > 1
         else None
     )

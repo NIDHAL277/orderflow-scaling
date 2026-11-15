@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import itertools
 from collections.abc import Sequence
-from concurrent.futures import ProcessPoolExecutor
 from typing import Any
 
 import numpy as np
@@ -28,6 +27,7 @@ from ofs.forecast.fit import make_fit_fn, make_moment_fit
 from ofs.forecast.models import FloatArray, ForecastSpec, SeriesForecaster
 from ofs.inference.bootstrap import rng_for
 from ofs.simulate.fbm import fbm
+from ofs.utils import process_pool
 
 MODELS: tuple[str, ...] = (
     "rw",
@@ -124,7 +124,7 @@ def forecast_study(
     }
     rows: list[dict[str, Any]] = []
     if jobs > 1:
-        with ProcessPoolExecutor(max_workers=jobs) as pool:
+        with process_pool(max_workers=jobs) as pool:
             futures = [pool.submit(one_replication, H, nz, r, spec, **kw) for H, nz, r in cells]
             for f in futures:
                 rows += f.result()

@@ -1,4 +1,4 @@
-"""Small typed helpers: polars scalars, process memory."""
+"""Small typed helpers: polars scalars, process memory, process pools."""
 
 from __future__ import annotations
 
@@ -6,8 +6,11 @@ import ctypes
 import datetime as dt
 import importlib
 import math
+import multiprocessing
 import os
 import sys
+from concurrent.futures import ProcessPoolExecutor
+from typing import Any
 
 
 def as_float(value: object, default: float = math.nan) -> float:
@@ -69,3 +72,16 @@ def peak_rss_bytes() -> int:
     resource = importlib.import_module("resource")
     peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
     return int(peak) * (1 if sys.platform == "darwin" else 1024)  # bytes on macOS, KiB on Linux
+
+
+def process_pool(max_workers: int, **kwargs: Any) -> ProcessPoolExecutor:
+    """Process pool whose workers are spawned, on every platform.
+
+    Linux forks by default. A worker forked while a thread of polars, numba or the BLAS
+    holds a lock never gets it back and waits for ever: in a Linux container the test
+    suite stopped, without using any CPU, at the first test that reduces with two jobs.
+    Spawning is what Windows and macOS already do, so the workers now start the same way
+    everywhere; what is passed to them must be picklable, as it had to be on Windows.
+    """
+    context = multiprocessing.get_context("spawn")
+    return ProcessPoolExecutor(max_workers=max_workers, mp_context=context, **kwargs)

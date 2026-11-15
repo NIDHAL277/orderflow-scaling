@@ -18,7 +18,7 @@ from ofs.io import (
 )
 from ofs.logs import configure_logging, stage_event
 from ofs.schemas import BINS, ESTIMATES, MANIFEST, TableSchema
-from ofs.utils import as_date, as_float
+from ofs.utils import as_date, as_float, process_pool
 
 
 def test_atomic_parquet_and_tables(tmp_path: Path) -> None:
@@ -204,3 +204,10 @@ def test_one_writer_at_a_time(tmp_path: Path) -> None:
     assert busy.exit_code == EXIT_BUSY and "retry later" in busy.output
     free = runner.invoke(app, ["--root", str(project.root), "clean-temp", "--dry-run"])
     assert free.exit_code == 0
+
+
+def test_process_pools_spawn_their_workers() -> None:
+    # forked workers hang on Linux once polars or numba have started threads
+    with process_pool(2) as pool:
+        assert pool._mp_context.get_start_method() == "spawn"  # type: ignore[attr-defined]
+        assert list(pool.map(abs, [-1, -2, -3])) == [1, 2, 3]
