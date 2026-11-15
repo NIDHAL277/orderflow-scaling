@@ -76,8 +76,10 @@ ssh ubuntu@<public-address> "sudo chown -R 1000:1000 orderflow-scaling/data"
 
 ## 7. Start
 
-Once the image is published on GHCR (the CI builds it for `linux/amd64` and
-`linux/arm64` on every push to `main`):
+Once a release is tagged (`v1.0.0`, say), the release workflow publishes the image on
+GHCR for `linux/amd64` and `linux/arm64`. A new GHCR package can start private: make it
+public in its package settings on GitHub, or run `docker login ghcr.io` on the machine.
+Then:
 
 ```bash
 docker compose pull && docker compose up -d
