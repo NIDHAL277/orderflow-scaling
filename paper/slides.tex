@@ -9,7 +9,7 @@
 \usepackage{lmodern,booktabs,graphicx,amsmath}
 \graphicspath{{figures/}}
 \newcommand{\Hz}{H_0}
-\newcommand{\fig}[2]{\IfFileExists{figures/#1}{\includegraphics[height=#2\textheight]{#1}}{\fbox{\parbox{0.6\linewidth}{\centering\small figure \texttt{#1}: built by \texttt{make report}}}}}
+\newcommand{\fig}[2]{\IfFileExists{figures/#1}{\includegraphics[height=#2\textheight,width=\linewidth,keepaspectratio]{#1}}{\fbox{\parbox{0.6\linewidth}{\centering\small figure \texttt{#1}: built by \texttt{make report}}}}}
 \IfFileExists{tables/macros.tex}{\input{tables/macros.tex}}{\newcommand{\resultHOne}{pending}\newcommand{\resultHTwo}{pending}\newcommand{\resultHThree}{pending}}
 \providecommand{\resultHOnePerp}{pending}\providecommand{\resultHTwoPerp}{pending}\providecommand{\resultHThreePerp}{pending}
 \providecommand{\resultFOne}{pending}
@@ -73,7 +73,7 @@ impact on crypto markets}
 \end{frame}
 
 \begin{frame}{Estimators, validated by simulation}
-  \begin{columns}[T]
+  \begin{columns}[T,onlytextwidth]
     \column{0.42\textwidth}
     \small
     \begin{itemize}
@@ -93,7 +93,7 @@ impact on crypto markets}
 \end{frame}
 
 \begin{frame}{H1 volume $H_{\mathrm{vol}} = \Hz - \tfrac12$ \quad H2 volatility $H_\sigma = 2\Hz - \tfrac32$}
-  \begin{columns}[T]
+  \begin{columns}[T,onlytextwidth]
     \column{0.49\textwidth}
     \centering\fig{fig2_h1_hvol.pdf}{0.55}\par
     \small H1, confirmation: spot \alert{\resultHOne}, perpetual \alert{\resultHOnePerp}
@@ -104,7 +104,7 @@ impact on crypto markets}
 \end{frame}
 
 \begin{frame}{H3 --- impact (exploratory), spot vs perpetual, robustness}
-  \begin{columns}[T]
+  \begin{columns}[T,onlytextwidth]
     \column{0.49\textwidth}
     \centering\fig{fig4_h3_delta.pdf}{0.55}\par
     \small Impact: spot \alert{\resultHThree}, perpetual \alert{\resultHThreePerp}
@@ -121,7 +121,7 @@ impact on crypto markets}
   \item F1 rough vs HAR: \resultFOne \quad F2 order-flow $H$ vs volatility $H$: \resultFTwo
   \item Simulated rough volatility: $-1\,\%$ (1 day) to $-7$--$13\,\%$ (22 days) QLIKE vs HAR; the published kernel loses at short horizons
 \end{itemize}
-\IfFileExists{figures/fig9_forecast_ratios.pdf}{\includegraphics[width=0.9\linewidth]{fig9_forecast_ratios.pdf}}{}
+\IfFileExists{figures/fig9_forecast_ratios.pdf}{\includegraphics[width=0.82\linewidth]{fig9_forecast_ratios.pdf}}{}
 \end{frame}
 
 \begin{frame}{Take-aways and reproducibility}

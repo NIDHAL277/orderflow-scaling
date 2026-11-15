@@ -47,6 +47,7 @@ def write_table(
         r"\centering\small",
         rf"\caption{{{caption}}}",
         rf"\label{{{label}}}",
+        r"\begin{adjustbox}{max width=\linewidth}",  # shrinks only a table wider than the text
         rf"\begin{{tabular}}{{{align}}}",
         r"\toprule",
         " & ".join(header) + r" \\",
@@ -55,7 +56,7 @@ def write_table(
     lines += [" & ".join(r) + r" \\" for r in rows] or [
         r"\multicolumn{" + str(len(header)) + r"}{c}{\emph{not available yet}} \\"
     ]
-    lines += [r"\bottomrule", r"\end{tabular}", r"\end{table}", ""]
+    lines += [r"\bottomrule", r"\end{tabular}", r"\end{adjustbox}", r"\end{table}", ""]
     path.write_text("\n".join(lines), encoding="utf-8")
     return path
 

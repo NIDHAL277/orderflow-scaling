@@ -1,8 +1,9 @@
 \documentclass[11pt]{article}
 \usepackage[a4paper,margin=2.5cm]{geometry}
 \usepackage[T1]{fontenc}
-\usepackage{lmodern,microtype,amsmath,amssymb,booktabs,graphicx,hyperref,natbib,amsfonts}
+\usepackage{lmodern,microtype,amsmath,amssymb,booktabs,graphicx,adjustbox,xcolor,hyperref,natbib,amsfonts}
 \hypersetup{colorlinks=true,linkcolor=blue!50!black,citecolor=blue!50!black,urlcolor=blue!50!black}
+\setlength{\emergencystretch}{3em}  % long code names
 \graphicspath{{figures/}}
 \newcommand{\Hz}{H_0}
 \newcommand{\Hv}{H_{\mathrm{vol}}}
@@ -109,7 +110,7 @@ for a meta-order executed at a constant rate (their Theorem~4.1).
 
 With $\Hz=3/4$, the square-root law of impact, the volume rate has roughness 1/4 and the
 extraday volatility a Hurst parameter near 0. We write the three relations as
-$Y_i=a+b\,\Hz_i$ across assets $i$:
+$Y_i=a+b\,H_{0,i}$ across assets $i$:
 \begin{center}
 \begin{tabular}{llll}
 \toprule
@@ -291,14 +292,14 @@ exponent from the daily statistics. Interval half-widths are multiplied by $k$ a
 covariance of the test by $k^2$; results with $k=1$ are reported as well.
 
 \paragraph{Regression and test.} $\hat\Hz$ is itself estimated, so least squares of $Y_i$
-on $\hat\Hz_i$ would be biased towards zero \citep{fuller1987}. We fit a Deming regression
+on $\hat H_{0,i}$ would be biased towards zero \citep{fuller1987}. We fit a Deming regression
 with the ratio of error variances taken from the bootstrap, and test $(a,b)=(a_0,b_0)$
 with the Wald statistic $W=(\hat\theta-\theta_0)^\top\hat\Sigma^{-1}(\hat\theta-\theta_0)
 \sim\chi^2_2$, $\hat\Sigma$ being the bootstrap covariance of $(\hat a,\hat b)$; Holm's
 correction \citep{holm1979} applies to H1--H3.
 
 \paragraph{Decision.} A relation is \emph{rejected} if the corrected test rejects at 1\,\%
-and the mean gap $\bar g=\overline{Y_i-a_0-b_0\hat\Hz_i}$ exceeds 0.05 in Hurst units;
+and the mean gap $\bar g=\overline{Y_i-a_0-b_0\hat H_{0,i}}$ exceeds 0.05 in Hurst units;
 \emph{compatible} if the test does not reject and the 95\,\% interval of $\bar g$ lies
 within $[-0.05,0.05]$; otherwise \emph{not decided}, with the number of days that would be
 needed, assuming an interval width proportional to $1/\sqrt{T}$. Size and power are
@@ -322,7 +323,7 @@ far from zero is of this kind, and the gap is then the informative number.
 \section{Protocol}
 \label{sec:protocol}
 The hypotheses, estimators, grids, decision rule and universe were written in
-\texttt{config/preregistration.md} and committed with the tag \texttt{prereg-v1} before
+\path{config/preregistration.md} and committed with the tag \texttt{prereg-v1} before
 any estimator ran on real data; until then real data served only to test ingestion and
 quality. The configuration was frozen a second time, by the tag \texttt{config-frozen},
 before the first estimation on the confirmation sample. Both rules are enforced by the
