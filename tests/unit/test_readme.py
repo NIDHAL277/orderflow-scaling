@@ -113,6 +113,9 @@ def test_confirmation_report_writes_the_front_page(tmp_path) -> None:
     readme_path.write_text(
         f"# project\n{readme.START}\npending\n{readme.END}\nmore\n", encoding="utf-8"
     )
+    index = project.root / "docs" / "index.md"
+    index.parent.mkdir(parents=True, exist_ok=True)
+    index.write_text(f"# docs\n{readme.START}\npending\n{readme.END}\n", encoding="utf-8")
     build_report(project, "confirmation", "quick", compile_pdf=False)  # nothing confirmed yet
     assert "pending" in readme_path.read_text(encoding="utf-8")
     write_results(project, "confirmation", n=10, reps=30)
@@ -124,5 +127,6 @@ def test_confirmation_report_writes_the_front_page(tmp_path) -> None:
     macros = (project.root / "paper" / "tables" / "macros.tex").read_text(encoding="utf-8")
     assert "resultHOneBoth" in macros and "on spot (gap $" in macros
     assert "resultHOnePerp" in macros
+    assert "(img/headline.png)" in index.read_text(encoding="utf-8")
     build_report(project, "development", "quick", compile_pdf=False)  # never the front page
     assert readme_path.read_text(encoding="utf-8") == text

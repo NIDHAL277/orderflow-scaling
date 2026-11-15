@@ -177,7 +177,7 @@ def _write_macros(
 def _front_page(
     project: Project, tests: pl.DataFrame, forecast: pl.DataFrame, margin: float
 ) -> None:
-    """Headline figure and result block of the README, from the confirmation results."""
+    """Headline figure, result block of the README and of the documentation home page."""
     if not tests.height or not tests.filter(pl.col("hypothesis") == "H1").height:
         return  # nothing confirmed yet: the README keeps its block
     image = project.root / "docs" / "img" / "headline.png"
@@ -190,15 +190,19 @@ def _front_page(
         n_spot, n_perp = len(pairs), sum(1 for p in pairs if p.perp)
     except FileNotFoundError:
         n_spot = n_perp = 0
-    block = readme.results_block(
-        tests,
-        forecast,
-        period=span,
-        n_spot=n_spot,
-        n_perp=n_perp,
-        figure="docs/img/headline.png",
-    )
-    readme.update_readme(project.root / "README.md", block)
+    for page, figure in (
+        ("README.md", "docs/img/headline.png"),
+        ("docs/index.md", "img/headline.png"),
+    ):
+        block = readme.results_block(
+            tests,
+            forecast,
+            period=span,
+            n_spot=n_spot,
+            n_perp=n_perp,
+            figure=figure,
+        )
+        readme.update_readme(project.root / page, block)
 
 
 def compile_latex(paper: Path, document: str = "main.tex") -> bool:

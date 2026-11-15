@@ -12,6 +12,10 @@ Muhle-Karbe, Ouazzani Chahdi, Rosenbaum & Szymanski (2026).
 | Extraday volatility | `2H0 − 3/2` | 0 |
 | Impact (constant-rate meta-order, in time) | `2 − 2H0` | 0.5 |
 
+<!-- results:start -->
+**Result:** *pending: the confirmatory tests run on the frozen confirmation sample.*
+<!-- results:end -->
+
 * [Architecture](architecture.md): six stages, one store, four outputs.
 * [Data](data.md): Binance Vision formats and quality controls.
 * [Estimators](estimators.md): what is estimated, how, and what simulation says about it.
