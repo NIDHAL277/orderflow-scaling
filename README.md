@@ -32,7 +32,7 @@ the one measured on volatility ([docs/forecasting.md](docs/forecasting.md)).
   model confidence set, out of sample; live daily forecasts with a scored track record.
 * **Production**: daily Docker pipeline (late and re-published files handled), read-only
   API, dashboard, Healthchecks, change-point alarms on `H0`, a WebSocket L2 collector.
-* **Quality**: `mypy --strict`, ruff, 238 tests (92.6 % coverage), MkDocs site,
+* **Quality**: `mypy --strict`, ruff, 244 tests (92.2 % coverage), MkDocs site,
   15 architecture decision records, incident notes.
 
 
