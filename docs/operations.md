@@ -31,6 +31,13 @@ root, such as Avast's "Web/Mail Shield"): the build's downloads fail with
 and pass it as a build secret, which only the local image then trusts:
 `docker build --secret id=extra_ca,src=root.pem -t orderflow-scaling:local .`
 
+Rehearsing the CI job before a push, when developing on Windows or macOS: the workflow
+runs on Linux, where some things differ (worker processes are forked, not spawned; file
+names are case-sensitive). `scripts/ci-rehearsal.sh` runs the same steps in a container
+started from the local image, on a `git bundle` of the repository; its header gives the
+two commands. It found the hang described in
+[an incident note](incidents/2026-11-15-forked-workers-hang-on-linux.md).
+
 ## Daily run (`ofs daily`, cron `30 2-12 * * *`)
 
 1. 02:30 UTC: download yesterday's files; if absent, exit code 75 and retry every hour.

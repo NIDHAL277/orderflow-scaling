@@ -62,3 +62,7 @@ nav:
       - incidents/2026-11-09-fgn-precision-and-lost-study.md
       - incidents/2026-11-09-cleanup-deleted-derived-data.md
       - incidents/2026-11-10-restart-and-slow-resume.md
+      - incidents/2026-11-15-paper-had-never-been-compiled.md
+      - incidents/2026-11-15-health-check-read-every-report.md
+      - incidents/2026-11-15-truncated-download-stopped-the-run.md
+      - incidents/2026-11-15-forked-workers-hang-on-linux.md

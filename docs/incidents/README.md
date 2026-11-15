@@ -20,3 +20,7 @@ Test added: tests/...::test_...
 * [2026-11-09: fGn embedding failed at H = 0.9, a study run was lost](2026-11-09-fgn-precision-and-lost-study.md)
 * [2026-11-09: a cleanup command deleted derived data](2026-11-09-cleanup-deleted-derived-data.md)
 * [2026-11-10: a restart stopped the long jobs, and the resume was slow](2026-11-10-restart-and-slow-resume.md)
+* [2026-11-15: the paper had never been compiled](2026-11-15-paper-had-never-been-compiled.md)
+* [2026-11-15: the health check read every validation report](2026-11-15-health-check-read-every-report.md)
+* [2026-11-15: a truncated download stopped the venue comparison](2026-11-15-truncated-download-stopped-the-run.md)
+* [2026-11-15: forked pool workers hang on Linux](2026-11-15-forked-workers-hang-on-linux.md)
