@@ -14,6 +14,9 @@ Alternative: a laptop left on at night with the same `docker-compose.yml`.
 
 ## Deploy
 
+Step by step on Oracle Cloud, with the set-up script of the machine
+(`scripts/vm-setup.sh`): [Deploying on Oracle Cloud](deploy-oracle.md). In short:
+
 ```bash
 git clone https://github.com/NIDHAL277/orderflow-scaling && cd orderflow-scaling
 cp .env.example .env            # Healthchecks URL, hostnames, R2 credentials

@@ -91,6 +91,37 @@ def build_report(
     return paper
 
 
+def results_sentence(tests: pl.DataFrame, code: str) -> str:
+    """Decision and mean gap of one relation on each market, for the abstract and conclusion."""
+    found: list[tuple[str, str, float]] = []
+    disagree = False
+    for market, name in (("spot", "spot"), ("um", "perpetuals")):
+        rows = (
+            tests.filter(
+                (pl.col("hypothesis") == code)
+                & (pl.col("market") == market)
+                & (pl.col("estimator_set") == "primary")
+            )
+            if tests.height
+            else tests
+        )
+        if not rows.height or rows["mean_gap"][0] is None:
+            continue
+        row = rows.row(0, named=True)
+        found.append((style.decision_label(row["decision"]), name, float(row["mean_gap"])))
+        disagree = disagree or readme.controls_agree(row) is False
+    if not found:
+        return "pending"
+    parts = [f"{label} on {name} (gap ${gap:+.3f}$)" for label, name, gap in found]
+    if len(found) == 2 and found[0][0] == found[1][0]:
+        text = f"{parts[0]} and on {found[1][1]} (gap ${found[1][2]:+.3f}$)"
+    else:
+        text = ", ".join(parts)
+    if disagree:
+        text += ", although the control estimators disagree on its size"
+    return text
+
+
 def _write_macros(
     tests: pl.DataFrame,
     path: Path,
@@ -113,6 +144,7 @@ def _write_macros(
         )
         text = style.decision_label(row["decision"][0]) if row.height else "pending"
         lines.append(rf"\newcommand{{\resultH{name}}}{{{text}}}")
+        lines.append(rf"\newcommand{{\resultH{name}Both}}{{{results_sentence(tests, code)}}}")
     counts = {"nPairs": "pending", "nPerps": "pending", "pairDays": "pending"}
     if project is not None:
         try:

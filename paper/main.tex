@@ -15,6 +15,9 @@
 \providecommand{\resultHOne}{pending}
 \providecommand{\resultHTwo}{pending}
 \providecommand{\resultHThree}{pending}
+\providecommand{\resultHOneBoth}{pending}
+\providecommand{\resultHTwoBoth}{pending}
+\providecommand{\resultHThreeBoth}{pending}
 \providecommand{\nPairs}{60}
 \providecommand{\nPerps}{59}
 \providecommand{\pairDays}{pending}
@@ -41,9 +44,9 @@ exponents on the same data for each of \nPairs{} cryptocurrency pairs traded on 
 spot and perpetual (\nPerps{} perpetuals), with estimators validated by simulation under
 microstructure noise, and test the three relations jointly in the cross-section with
 errors-in-variables regressions and a bootstrap synchronized across assets, under a
-pre-registered protocol with a frozen confirmation sample. Volume relation: \resultHOne;
-volatility relation: \resultHTwo; impact relation (exploratory, proxy measure):
-\resultHThree. Out of sample, an exact rough-volatility predictor is compared with HAR
+pre-registered protocol with a frozen confirmation sample. Volume relation: \resultHOneBoth;
+volatility relation: \resultHTwoBoth; impact relation (exploratory, proxy measure):
+\resultHThreeBoth. Out of sample, an exact rough-volatility predictor is compared with HAR
 benchmarks for daily volatility and volume, and the roughness implied by order flow with
 the roughness measured on volatility (QLIKE ratios, spot, 22 days: \resultFOne{} and
 \resultFTwo).
@@ -463,7 +466,31 @@ markets; the other decisions did not change. Both estimators appear in the speci
 curve.
 
 \section{Conclusion}
-To be written after the confirmatory tests.
+One assumption links three exponents: if the persistence of order flow, $\Hz$, drives both
+trading and prices, it sets the roughness of volume, the roughness of volatility and the
+exponent of impact. On the confirmation year, with every choice frozen before that year
+was read, the volume relation is \resultHOneBoth; the volatility relation is
+\resultHTwoBoth; the exploratory impact relation, measured through a proxy, is
+\resultHThreeBoth.
+
+Two outcomes of the protocol hold whatever these decisions. The negative control, signs
+permuted within each day, showed on the development year that the pre-registered
+estimator counted a day-level imbalance as long memory. The corrected estimator (D4) was
+checked in simulation and frozen with the rest of the configuration before the
+confirmation year was used, so the confirmatory tests did not shape it. And the decision
+rule keeps apart a relation that fails and one that cannot be judged: an interval wider
+than the equivalence margin gives \emph{undecided}, not support.
+
+Out of sample, the exact rough predictor forecasts the average volatility of the next 22
+days on spot with a mean QLIKE ratio to HAR of \resultFOne{} (F1, below one when the rough
+predictor is better); predicting with the roughness implied by order flow instead of the
+roughness measured on volatility gives \resultFTwo{} (F2).
+
+Three extensions would sharpen the tests: order flow aggregated across venues, since the
+persistence on one exchange need not be that of the market; a longer trade history, so
+that the roughness of daily volatility no longer sits on the bound of its range; and a
+measure of impact from the order book, which the L2 collector of the pipeline records for
+three pairs, in place of the proxy built on runs of same-side trades.
 
 \appendix
 \section{Reproducibility}

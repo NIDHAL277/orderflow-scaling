@@ -51,6 +51,14 @@ def _outside(row: dict[str, Any] | None) -> bool:
     return not row["gap_ci_low"] <= row["mean_gap"] <= row["gap_ci_high"]
 
 
+def controls_agree(row: dict[str, Any]) -> bool | None:
+    """Read the pre-registered "counts" flag of a test: False when the controls disagree."""
+    details = row.get("details")
+    flags = json.loads(details) if isinstance(details, str) and details else {}
+    value = flags.get("counts") if isinstance(flags, dict) else None
+    return value if isinstance(value, bool) else None
+
+
 def cell(row: dict[str, Any] | None) -> str:
     """Decision, mean gap and interval of one test; a dagger when the controls disagree."""
     if row is None or row.get("mean_gap") is None:
@@ -58,9 +66,7 @@ def cell(row: dict[str, Any] | None) -> str:
     text = f"{decision_label(row['decision'])}, gap {_num(row['mean_gap'])}"
     if row.get("gap_ci_low") is not None and row.get("gap_ci_high") is not None:
         text += f" [{_num(row['gap_ci_low'])}, {_num(row['gap_ci_high'])}]"
-    details = row.get("details")
-    flags = json.loads(details) if isinstance(details, str) and details else {}
-    if isinstance(flags, dict) and flags.get("counts") is False:
+    if controls_agree(row) is False:
         text += " †"
     return text
 

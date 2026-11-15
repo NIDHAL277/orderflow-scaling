@@ -32,8 +32,8 @@ the one measured on volatility ([docs/forecasting.md](docs/forecasting.md)).
   model confidence set, out of sample; live daily forecasts with a scored track record.
 * **Production**: daily Docker pipeline (late and re-published files handled), read-only
   API, dashboard, Healthchecks, change-point alarms on `H0`, a WebSocket L2 collector.
-* **Quality**: `mypy --strict`, ruff, 217 tests (92 % coverage), MkDocs site,
-  14 architecture decision records, incident notes.
+* **Quality**: `mypy --strict`, ruff, 238 tests (92.6 % coverage), MkDocs site,
+  15 architecture decision records, incident notes.
 
 
 ## Reproduce
@@ -55,6 +55,8 @@ make sim-forecast           # forecast models on simulated rough volatility
 make report                 # every figure and table of the paper, then paper/main.pdf
 docker compose up -d        # daily pipeline + API + dashboard behind Caddy
 ```
+
+On a cloud machine, step by step: [Deploying on Oracle Cloud](docs/deploy-oracle.md).
 
 `make all` rebuilds every table and figure from a clean clone. Without `make` (Windows),
 run the same `uv run ofs ...` commands listed in the [Makefile](Makefile).
@@ -130,7 +132,7 @@ perpetuals from the WebSocket diff-depth stream (Binance's sequence rules, resyn
 gap) and records 1-second books and every trade to hourly Parquet files, for a future
 propagator model ([docs/l2-collector.md](docs/l2-collector.md)).
 
-## Status (2026-11-14)
+## Status (2026-11-15)
 
 | Phase | State |
 |---|---|
@@ -138,8 +140,8 @@ propagator model ([docs/l2-collector.md](docs/l2-collector.md)).
 | P1 Ingestion and reduction | done and hardened on real data: statistics = naive computation to 3.5e-15; a BTCUSDT perpetual day of 4.3 M trades (2025-10-10 crash) reduced in 13.9 s with 1.4 GB peak memory (target < 60 s, < 8 GB) |
 | P2 Simulation and estimators | done: full study (82 cells, 200 replications of 365 days); estimator roles and calibration k fixed by the pre-registered rule (1.14, then 1.06 after the H0 re-run of D4); `H_σ` flagged as limited |
 | P3 Full universe, development | done: 60 pairs, 59 perpetuals (PAXG and WBTC left out by decision); 24-month backfill (2024-11-01 → 2026-10-31) with 86,694 of 86,870 pair-days reduced, 145 rejected by a control and none unexplained (O1 met); 5-year daily-volatility history; development estimates, tests and forecasts run twice, before and after deviations D3 and D4 |
-| P4 Confirmation and tests | configuration ready to freeze; the confirmation sample is untouched and runs after the tag `config-frozen` |
-| P5 Production | Docker, compose, Caddy, cron, Healthchecks, R2 backups; the daily run replays late files and applies re-published ones; deployment on a VM pending |
+| P4 Confirmation and tests | configuration frozen on 2026-11-14 (tag `config-frozen`) before the first estimate on the confirmation sample; confirmation run in progress |
+| P5 Production | Docker, compose, Caddy, cron, Healthchecks, R2 backups; the daily run replays late files and applies re-published ones; guide and set-up script for an Oracle Cloud VM ready, deployment pending |
 | P6 Report | LaTeX paper and 10-slide deck built from the generated figures and tables (tests, levels, reading aids, controls, power); confirmation results pending |
 | Forecasting (F) | models, evaluation, live forecasts, API, dashboard page and report table done and validated on simulated rough volatility; development run on real data done; confirmation after `config-frozen` |
 | Spec extensions | change-point monitor of `H0` and L2 collector done (collector checked live: 2,446 trades, 0 resyncs in 20 s); kdb+/q and other exchanges not started |

@@ -1,6 +1,7 @@
 # ADR 0005 — Volatility: extraday horizon; principal estimator decided by simulation
 
-**Status**: accepted, pending the simulation outcome (2026-11-08)
+**Status**: accepted (2026-11-08). The full simulation study then made Whittle the principal
+estimator, a deviation from the rule recorded as D1 (2026-11-10, `config/deviations.md`).
 
 **Context**: the paper states the volatility prediction `2H0 − 3/2` for the *extraday*
 volatility (Remark 4.2) and quotes intraday estimates near 0.25 as a different object.

@@ -9,7 +9,7 @@ from test_inference import write_results
 
 from helpers import make_project
 from ofs.report import figures, readme
-from ofs.report.build import build_report
+from ofs.report.build import build_report, results_sentence
 
 
 def tests_frame() -> pl.DataFrame:
@@ -69,6 +69,20 @@ def test_results_block_reads_the_tests() -> None:
     assert "(docs/img/headline.png)" in block
 
 
+def test_results_sentence_for_the_abstract() -> None:
+    frame = tests_frame()
+    assert results_sentence(frame, "H1") == (
+        "rejected on spot (gap $-0.140$), undecided on perpetuals (gap $-0.140$)"
+    )
+    same = frame.with_columns(pl.lit("rejected").alias("decision"))
+    assert results_sentence(same, "H2") == (
+        "rejected on spot (gap $+0.090$) and on perpetuals (gap $+0.090$)"
+    )
+    assert results_sentence(frame, "H3").endswith("the control estimators disagree on its size")
+    assert results_sentence(frame, "H9") == "pending"
+    assert results_sentence(pl.DataFrame(), "H1") == "pending"
+
+
 def test_readme_block_is_replaced_between_the_markers(tmp_path) -> None:
     path = tmp_path / "README.md"
     assert readme.update_readme(path, "x") is False  # no README
@@ -107,5 +121,7 @@ def test_confirmation_report_writes_the_front_page(tmp_path) -> None:
     text = readme_path.read_text(encoding="utf-8")
     assert "pending" not in text and "H1, volume roughness" in text and text.endswith("more\n")
     assert (project.root / "docs" / "img" / "headline.png").exists()
+    macros = (project.root / "paper" / "tables" / "macros.tex").read_text(encoding="utf-8")
+    assert "resultHOneBoth" in macros and "on spot (gap $" in macros
     build_report(project, "development", "quick", compile_pdf=False)  # never the front page
     assert readme_path.read_text(encoding="utf-8") == text
