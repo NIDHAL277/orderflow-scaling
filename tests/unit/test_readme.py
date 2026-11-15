@@ -123,5 +123,6 @@ def test_confirmation_report_writes_the_front_page(tmp_path) -> None:
     assert (project.root / "docs" / "img" / "headline.png").exists()
     macros = (project.root / "paper" / "tables" / "macros.tex").read_text(encoding="utf-8")
     assert "resultHOneBoth" in macros and "on spot (gap $" in macros
+    assert "resultHOnePerp" in macros
     build_report(project, "development", "quick", compile_pdf=False)  # never the front page
     assert readme_path.read_text(encoding="utf-8") == text

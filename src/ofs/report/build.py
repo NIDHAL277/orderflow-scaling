@@ -133,17 +133,18 @@ def _write_macros(
     names = {"H1": "One", "H2": "Two", "H3": "Three"}
     lines = []
     for code, name in names.items():
-        row = (
-            tests.filter(
-                (pl.col("hypothesis") == code)
-                & (pl.col("market") == "spot")
-                & (pl.col("estimator_set") == "primary")
+        for market, suffix in (("spot", ""), ("um", "Perp")):
+            row = (
+                tests.filter(
+                    (pl.col("hypothesis") == code)
+                    & (pl.col("market") == market)
+                    & (pl.col("estimator_set") == "primary")
+                )
+                if tests.height
+                else tests
             )
-            if tests.height
-            else tests
-        )
-        text = style.decision_label(row["decision"][0]) if row.height else "pending"
-        lines.append(rf"\newcommand{{\resultH{name}}}{{{text}}}")
+            text = style.decision_label(row["decision"][0]) if row.height else "pending"
+            lines.append(rf"\newcommand{{\resultH{name}{suffix}}}{{{text}}}")
         lines.append(rf"\newcommand{{\resultH{name}Both}}{{{results_sentence(tests, code)}}}")
     counts = {"nPairs": "pending", "nPerps": "pending", "pairDays": "pending"}
     if project is not None:

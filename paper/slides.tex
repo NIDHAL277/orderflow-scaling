@@ -11,6 +11,7 @@
 \newcommand{\Hz}{H_0}
 \newcommand{\fig}[2]{\IfFileExists{figures/#1}{\includegraphics[height=#2\textheight]{#1}}{\fbox{\parbox{0.6\linewidth}{\centering\small figure \texttt{#1}: built by \texttt{make report}}}}}
 \IfFileExists{tables/macros.tex}{\input{tables/macros.tex}}{\newcommand{\resultHOne}{pending}\newcommand{\resultHTwo}{pending}\newcommand{\resultHThree}{pending}}
+\providecommand{\resultHOnePerp}{pending}\providecommand{\resultHTwoPerp}{pending}\providecommand{\resultHThreePerp}{pending}
 \providecommand{\resultFOne}{pending}
 \providecommand{\resultFTwo}{pending}
 
@@ -95,10 +96,10 @@ impact on crypto markets}
   \begin{columns}[T]
     \column{0.49\textwidth}
     \centering\fig{fig2_h1_hvol.pdf}{0.55}\par
-    \small H1 (spot, confirmation): \alert{\resultHOne}
+    \small H1, confirmation: spot \alert{\resultHOne}, perpetual \alert{\resultHOnePerp}
     \column{0.49\textwidth}
     \centering\fig{fig3_h2_hsigma.pdf}{0.55}\par
-    \small H2 (spot, confirmation): \alert{\resultHTwo}
+    \small H2, confirmation: spot \alert{\resultHTwo}, perpetual \alert{\resultHTwoPerp}
   \end{columns}
 \end{frame}
 
@@ -106,7 +107,7 @@ impact on crypto markets}
   \begin{columns}[T]
     \column{0.49\textwidth}
     \centering\fig{fig4_h3_delta.pdf}{0.55}\par
-    \small Impact: \alert{\resultHThree}
+    \small Impact: spot \alert{\resultHThree}, perpetual \alert{\resultHThreePerp}
     \column{0.49\textwidth}
     \centering\fig{fig8_specification_curve.pdf}{0.55}\par
     \small every variant, sorted, with its CI (not corrected)
@@ -125,7 +126,8 @@ impact on crypto markets}
 
 \begin{frame}{Take-aways and reproducibility}
   \begin{itemize}
-    \item Volume: \resultHOne; volatility: \resultHTwo; impact: \resultHThree.
+    \item Spot / perpetual. Volume: \resultHOne{} / \resultHOnePerp; volatility:
+      \resultHTwo{} / \resultHTwoPerp; impact: \resultHThree{} / \resultHThreePerp.
     \item A rejection is reported with the same care as a confirmation; an undecided
       relation comes with the number of days needed to decide it.
     \item \texttt{make all} rebuilds every table and figure from a clean clone; the pipeline
