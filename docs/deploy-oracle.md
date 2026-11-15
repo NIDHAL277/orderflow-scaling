@@ -64,7 +64,8 @@ Healthchecks.io URL and the Cloudflare R2 keys of the weekly backup.
 ## 6. Data
 
 The daily run continues from the derived tables, the same as those of the weekly backup
-(`scripts/backup.sh`) plus the forecasts. The raw Binance files are never copied: the
+(`scripts/backup.sh`) plus the forecasts: about 8 GB, nearly all of it daily statistics.
+The raw Binance files are never copied: the
 pipeline downloads what it needs. From the laptop, in the repository:
 
 ```bash
