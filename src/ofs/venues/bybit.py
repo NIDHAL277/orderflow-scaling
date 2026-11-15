@@ -253,3 +253,68 @@ def compare(
                 stats = h0_on_venue(project, layout, symbol, market, days, reps=reps)
                 rows.append({"symbol": symbol, "market": market, "venue": venue, **stats})
     return pl.DataFrame(rows, schema=VENUE_SCHEMA)
+
+
+def _cell(row: dict[str, Any] | None) -> str:
+    if row is None or row["h0"] is None or not math.isfinite(row["h0"]):
+        return "not enough days"
+    text = f"{row['h0']:.3f}"
+    if row["ci_low"] is not None and math.isfinite(row["ci_low"]):
+        text += f" [{row['ci_low']:.3f}, {row['ci_high']:.3f}]"
+    return text
+
+
+def results_block(table: pl.DataFrame, *, period: str, figure: str) -> str:
+    """Markdown block of the documentation page: ``H0`` by pair on both venues, the figure."""
+    from ofs.report.readme import END, START
+
+    lines = [
+        START,
+        "",
+        f"Days {period}. Principal `H0` estimator on each venue; 95 % moving-block bootstrap "
+        "interval over days, without the calibration of the confirmatory intervals. "
+        "Difference: Binance minus Bybit.",
+        "",
+        "| Pair | Market | Binance | Bybit | Difference | Days (Binance / Bybit) |",
+        "|---|---|---|---|---|---|",
+    ]
+    names = {"spot": "spot", "um": "perpetual"}
+    diffs: dict[str, list[float]] = {}
+    keys = table.select("symbol", "market").unique(maintain_order=True).iter_rows()
+    for symbol, market in keys:
+        found: dict[str, dict[str, Any]] = {
+            r["venue"]: r
+            for r in table.filter(
+                (pl.col("symbol") == symbol) & (pl.col("market") == market)
+            ).iter_rows(named=True)
+        }
+        a, b = found.get("binance"), found.get("bybit")
+        diff = "–"
+        if a and b and math.isfinite(a["h0"]) and math.isfinite(b["h0"]):
+            diff = f"{a['h0'] - b['h0']:+.3f}".replace("-", "−")
+            diffs.setdefault(market, []).append(a["h0"] - b["h0"])
+        days = f"{a['n_days'] if a else 0} / {b['n_days'] if b else 0}"
+        lines.append(
+            f"| {symbol} | {names.get(market, market)} | {_cell(a)} | {_cell(b)} | {diff} | {days} |"
+        )
+    for market, values in diffs.items():
+        mean = f"{sum(values) / len(values):+.3f}".replace("-", "−")
+        lines.append(
+            f"| Mean of {len(values)} pairs | {names.get(market, market)} | | | {mean} | |"
+        )
+    lines += ["", f"![H0 of the same pairs on Binance and Bybit]({figure})", "", END]
+    return "\n".join(lines)
+
+
+def publish(project: Project, table: pl.DataFrame, period: str) -> Path:
+    """Write the figure and the result block of ``docs/venues.md`` from ``table``."""
+    from ofs.report import figures, style
+    from ofs.report.readme import update_readme
+
+    style.apply()
+    image = project.root / "docs" / "img" / "venues_bybit.png"
+    image.parent.mkdir(parents=True, exist_ok=True)
+    figures.venues(table, image, f"Order-flow persistence on two exchanges, {period}")
+    block = results_block(table, period=period, figure="img/venues_bybit.png")
+    update_readme(project.root / "docs" / "venues.md", block)
+    return image

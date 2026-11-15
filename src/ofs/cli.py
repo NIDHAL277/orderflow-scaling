@@ -613,6 +613,9 @@ def venue_bybit(
     symbols: Annotated[list[str] | None, typer.Option("--symbol")] = None,
     reps: Annotated[int, typer.Option(help="Bootstrap replicates per interval")] = 200,
     keep_raw: Annotated[bool, typer.Option(help="Keep the downloaded files")] = False,
+    publish: Annotated[
+        bool, typer.Option(help="Also write docs/img/venues_bybit.png and the docs/venues.md table")
+    ] = False,
 ) -> None:
     """Exploratory: H0 on Bybit's public trades against Binance, same pairs and days.
 
@@ -647,6 +650,9 @@ def venue_bybit(
             f"[{row['ci_low']:.3f}, {row['ci_high']:.3f}] ({row['n_days']} days)"
         )
     typer.echo(f"written {out}")
+    if publish:
+        image = bybit.publish(project, table, f"{span[0]:%Y-%m-%d} to {end:%Y-%m-%d}")
+        typer.echo(f"written {image}")
 
 
 @app.command("collect-l2")

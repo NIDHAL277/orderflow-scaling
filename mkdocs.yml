@@ -30,6 +30,7 @@ nav:
   - Forecasting: forecasting.md
   - Change-point monitor: changepoints.md
   - L2 collector: l2-collector.md
+  - Second venue (Bybit): venues.md
   - Protocol: protocol.md
   - Operations: operations.md
   - Deploying on Oracle Cloud: deploy-oracle.md

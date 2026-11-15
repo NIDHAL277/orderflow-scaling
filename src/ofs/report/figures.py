@@ -450,3 +450,72 @@ def forecast_ratios(tests: pl.DataFrame, path: Path) -> Path:
     fig.savefig(path)
     plt.close(fig)
     return path
+
+
+VENUE_LABELS = {"binance": "Binance", "bybit": "Bybit"}
+
+
+def venues(table: pl.DataFrame, path: Path, title: str) -> Path:
+    """Exploratory figure: ``H0`` of the same pairs on two venues, one panel per market.
+
+    Colour keeps its meaning (the market); the venue is the fill of the marker.
+    """
+    from matplotlib.lines import Line2D
+
+    ok = table.filter(pl.col("h0").is_finite()) if table.height else table
+    if ok.height == 0:
+        return _placeholder(path, "H0 on two venues", "run `ofs venue-bybit` first")
+    markets = [m for m in ("spot", "um") if m in set(ok["market"].to_list())]
+    symbols = list(dict.fromkeys(ok["symbol"].to_list()))
+    fig, axes = plt.subplots(
+        1,
+        len(markets),
+        figsize=(7.0, 1.4 + 0.45 * len(symbols)),
+        sharex=True,
+        sharey=True,
+        squeeze=False,
+    )
+    for ax, market in zip(axes[0], markets, strict=True):
+        color = style.MARKET_COLORS[market]
+        for venue, dy in (("binance", 0.17), ("bybit", -0.17)):
+            rows = ok.filter((pl.col("market") == market) & (pl.col("venue") == venue))
+            filled = venue == "binance"
+            for r in rows.iter_rows(named=True):
+                y = len(symbols) - 1 - symbols.index(r["symbol"]) + dy
+                lo, hi = r["ci_low"], r["ci_high"]
+                if lo is not None and hi is not None and np.isfinite(lo) and np.isfinite(hi):
+                    ax.hlines(y, lo, hi, color=color, lw=2.0, zorder=2)
+                ax.plot(
+                    r["h0"],
+                    y,
+                    "o",
+                    ms=6.5,
+                    color=color if filled else "white",
+                    mec="white" if filled else color,
+                    mew=1.0 if filled else 1.6,
+                    zorder=3,
+                )
+        ax.set_title(style.MARKET_LABELS[market], loc="left", fontsize=9)
+        ax.set_ylim(-0.6, len(symbols) - 0.4)
+        ax.set_yticks(range(len(symbols)), list(reversed(symbols)))
+        ax.tick_params(axis="y", length=0)
+        ax.grid(axis="y", visible=False)
+    fig.supxlabel(
+        "persistence H0 of the signed order flow (95 % interval)", fontsize=9, color=style.INK_2
+    )
+    fig.suptitle(title, x=0.02, ha="left", fontsize=10)
+    handles = [
+        Line2D([], [], ls="", marker="o", ms=6.5, color=style.INK_2, mec="white", mew=1.0),
+        Line2D([], [], ls="", marker="o", ms=6.5, color="white", mec=style.INK_2, mew=1.6),
+    ]
+    fig.legend(
+        handles,
+        [VENUE_LABELS["binance"], VENUE_LABELS["bybit"]],
+        loc="lower center",
+        bbox_to_anchor=(0.5, -0.12),
+        ncol=2,
+        fontsize=8,
+    )
+    fig.savefig(path, dpi=200, facecolor="white")
+    plt.close(fig)
+    return path

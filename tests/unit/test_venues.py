@@ -127,3 +127,53 @@ def test_reduce_and_estimate_on_synthetic_bybit_files(project: Project, tmp_path
     assert row["ci_low"] <= row["ci_high"]
     short = bybit.h0_on_venue(project, DataLayout(root), "AAAUSDT", "spot", days, min_days=5)
     assert math.isnan(short["h0"])  # too few days: no estimate
+
+
+def venue_table() -> pl.DataFrame:
+    rows = []
+    for symbol, base in (("AAAUSDT", 0.70), ("BBBUSDT", 0.66)):
+        for market, shift in (("spot", 0.0), ("um", -0.1)):
+            for venue, d in (("binance", 0.0), ("bybit", 0.02)):
+                h = base + shift + d
+                rows.append(
+                    {
+                        "symbol": symbol,
+                        "market": market,
+                        "venue": venue,
+                        "n_days": 30,
+                        "h0": h,
+                        "ci_low": h - 0.02,
+                        "ci_high": h + 0.02,
+                    }
+                )
+    rows[-1].update(n_days=4, h0=math.nan, ci_low=math.nan, ci_high=math.nan)  # too few days
+    return pl.DataFrame(rows, schema=bybit.VENUE_SCHEMA)
+
+
+def test_results_block_and_figure(project: Project, tmp_path: Path) -> None:
+    from ofs.report import figures
+    from ofs.report.readme import END, START
+
+    table = venue_table()
+    block = bybit.results_block(table, period="2026-10-02 to 2026-10-31", figure="img/v.png")
+    assert block.startswith(START) and block.endswith(END)
+    assert (
+        "| AAAUSDT | spot | 0.700 [0.680, 0.720] | 0.720 [0.700, 0.740] | −0.020 | 30 / 30 |"
+        in block
+    )
+    assert "| BBBUSDT | perpetual | 0.560 [0.540, 0.580] | not enough days | – | 30 / 4 |" in block
+    assert "| Mean of 2 pairs | spot | | | −0.020 | |" in block
+    assert "| Mean of 1 pairs | perpetual |" in block
+    assert "(img/v.png)" in block
+
+    out = figures.venues(table, tmp_path / "v.png", "title")
+    assert out.stat().st_size > 10_000
+    assert figures.venues(table.clear(), tmp_path / "e.png", "title").exists()
+
+    page = project.root / "docs" / "venues.md"
+    page.parent.mkdir(parents=True, exist_ok=True)
+    page.write_text(f"# venues\n{START}\npending\n{END}\nmore\n", encoding="utf-8")
+    image = bybit.publish(project, table, "2026-10-02 to 2026-10-31")
+    assert image.exists() and image.name == "venues_bybit.png"
+    text = page.read_text(encoding="utf-8")
+    assert "pending" not in text and "AAAUSDT" in text and text.endswith("more\n")
