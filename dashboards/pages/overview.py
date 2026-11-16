@@ -14,6 +14,7 @@ from ofs.venues.common import latest_table, summary
 Row = dict[str, Any]
 MARKETS = (("spot", SPOT), ("um", PERP))
 RELATIONS = {"H1": "Volume roughness", "H2": "Volatility roughness", "H3": "Impact exponent"}
+PIPELINE = {"ok": "up to date", "stale": "behind", "degraded": "last run failed"}
 FORECASTS = {
     "F1": "Rough predictor against HAR",
     "F2": "H from theory against H estimated",
@@ -123,9 +124,17 @@ def overview_page() -> None:
         venues_summary()
     with right.container(key="glass-pipeline"):
         health = s.health()
-        status = "running normally" if health.get("status") == "ok" else "degraded"
-        st.markdown(f"**Data pipeline** · {status}")
-        st.markdown(f"Last day downloaded and verified: **{health.get('last_ok_day') or '–'}**")
+        st.markdown(f"**Data pipeline** · {PIPELINE.get(health['status'], health['status'])}")
+        lag = health.get("data_lag_days")
+        age = "" if lag is None else f" ({lag} day{'' if lag == 1 else 's'} ago)"
+        st.markdown(
+            f"Last day downloaded and verified: **{health.get('last_ok_day') or '–'}**{age}"
+        )
+        if health.get("stale"):
+            st.caption(
+                "On a normal day the last verified day is one or two days old: the daily run "
+                "has not caught up."
+            )
         st.page_link("pages/health.py", label="Pipeline health", icon=":material/arrow_forward:")
 
 

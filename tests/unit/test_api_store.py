@@ -13,7 +13,7 @@ from ofs.inference.hypotheses import run_tests
 from ofs.ingest.manifest import ManifestRecord, upsert
 from ofs.monitoring import write_status
 from ofs.paths import DataLayout
-from ofs.store import Store
+from ofs.store import STALE_AFTER_DAYS, Store
 
 
 @pytest.fixture
@@ -43,8 +43,9 @@ def test_store_queries(filled: Project) -> None:
     assert store.estimates_for("NOPE").height == 0
     assets = store.assets()
     assert assets.row(0, named=True)["days_ok"] == 1
-    health = store.health()
+    health = store.health(today=dt.date(2026, 10, 2))
     assert health["status"] == "ok" and health["last_ok_day"] == "2026-10-01"
+    assert health["data_lag_days"] == 1 and not health["stale"]
     assert health["manifest_counts"]["ok"] == 1 and 0 <= health["disk_used_fraction"] <= 1
     assert store.residuals("confirmation").height > 0
     assert store.robustness("development").height == 0 and store.simulation("full").height == 0
@@ -60,6 +61,7 @@ def test_store_on_empty_directory(tmp_path) -> None:
     assert store.assets().height == 0
     h = store.health()
     assert h["last_ok_day"] is None and h["validation_failures"] is None  # never recorded
+    assert h["data_lag_days"] is None and not h["stale"]
     assert store.validation_failures() == 0
 
 
@@ -72,10 +74,23 @@ def test_health_reports_the_count_the_daily_run_recorded(tmp_path) -> None:
     assert store.health()["validation_failures"] == 3
 
 
+def test_health_flags_data_that_is_behind(filled: Project) -> None:
+    store = Store(filled.data_dir)
+    last = dt.date(2026, 10, 1)  # the fixture's last verified day
+    on_time = store.health(today=last + dt.timedelta(days=STALE_AFTER_DAYS))
+    assert on_time["status"] == "ok" and on_time["data_lag_days"] == STALE_AFTER_DAYS
+    late = store.health(today=last + dt.timedelta(days=STALE_AFTER_DAYS + 1))
+    assert late["status"] == "stale" and late["stale"]
+    write_status(store.layout.status_file, last_error="HTTP 503")
+    assert store.health(today=last)["status"] == "degraded"  # a failed run comes first
+
+
 def test_api_endpoints(filled: Project) -> None:
     client = TestClient(create_app(filled.data_dir, rate_per_minute=1000))
     health = client.get("/health").json()
-    assert health["status"] == "ok" and health["version"]
+    # the fixture's last verified day, 2026-10-01, is long past: the data is behind
+    assert health["status"] == "stale" and health["stale"] and health["data_lag_days"] > 3
+    assert health["version"]
     assert client.get("/assets").json()[0]["symbol"] == "AAAUSDT"
     est = client.get("/estimates/aaausdt", params={"sample": "confirmation", "exponent": "Hvol"})
     assert est.status_code == 200 and {r["exponent"] for r in est.json()} == {"Hvol"}

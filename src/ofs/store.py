@@ -21,6 +21,13 @@ from ofs.monitoring import disk_fraction, read_status
 from ofs.paths import DataLayout
 
 SAMPLES: tuple[Sample, ...] = ("development", "confirmation", "rolling", "history")
+STALE_AFTER_DAYS = 3
+"""Age of the last verified day beyond which the data is behind.
+
+Binance Vision publishes a day's files about a day later and the daily run retries until
+12:30 UTC, so on a normal day the last verified day is one or two days old; older than
+this, a run was missed or the machine is stopped.
+"""
 
 
 class Store:
@@ -206,13 +213,17 @@ class Store:
             man=man,
         )
 
-    def health(self) -> dict[str, Any]:
-        """Pipeline health: status, last day, counts, failures, disk.
+    def health(self, today: dt.date | None = None) -> dict[str, Any]:
+        """Pipeline health: status, last day and its age, counts, failures, disk.
 
         Cheap enough for a health check every minute: the status file and the manifest.
         The number of pair-days blocked by validation is the one the last daily run
         recorded; counting it reads every validation report (about 86,000 files for two
         years), see :meth:`validation_failures`.
+
+        ``status`` is ``degraded`` when the last daily run reported a problem, otherwise
+        ``stale`` when the last verified day is more than :data:`STALE_AFTER_DAYS` days
+        before ``today`` (UTC by default), otherwise ``ok``.
         """
         man = self.manifest()
         status = read_status(self.layout.status_file)
@@ -224,9 +235,16 @@ class Store:
             last_day = man.filter(pl.col("status") == "ok")["date"].max()  # type: ignore[assignment]
         recorded = status.get("validation_failures")
         failed = recorded if isinstance(recorded, int) else None
+        lag: int | None = None
+        if isinstance(last_day, dt.date):
+            lag = ((today or dt.datetime.now(dt.UTC).date()) - last_day).days
+        stale = lag is not None and lag > STALE_AFTER_DAYS
+        state = "degraded" if status.get("last_error") else "stale" if stale else "ok"
         return {
-            "status": "ok" if not status.get("last_error") else "degraded",
+            "status": state,
             "last_ok_day": last_day.isoformat() if isinstance(last_day, dt.date) else None,
+            "data_lag_days": lag,
+            "stale": stale,
             "manifest_counts": counts,
             "validation_failures": failed,
             "disk_used_fraction": round(disk_fraction(self.layout.root), 4),

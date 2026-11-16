@@ -9,19 +9,31 @@ import polars as pl
 import streamlit as st
 from common import store
 
+STATUS = {"ok": "🟢 ok", "stale": "🟡 behind", "degraded": "🟠 degraded"}
+
 
 def health_page() -> None:
     st.title("Pipeline health")
     h = store().health()
     pipe = h.get("pipeline", {})
+    lag = h.get("data_lag_days")
     c = st.columns(4)
-    c[0].metric("Status", "🟢 ok" if h["status"] == "ok" else "🟠 degraded")
-    c[1].metric("Last day verified", h.get("last_ok_day") or "–")
+    c[0].metric("Status", STATUS.get(h["status"], h["status"]))
+    c[1].metric(
+        "Last day verified",
+        h.get("last_ok_day") or "–",
+        help=None if lag is None else f"{lag} days ago; normally one or two",
+    )
     failures = h.get("validation_failures")
     c[2].metric("Days blocked by validation", "–" if failures is None else failures)
     c[3].metric("Disk used", f"{h.get('disk_used_fraction', 0):.0%}")
     if pipe.get("last_error"):
         st.warning(f"⚠️ Last run: {pipe['last_error']}")
+    if h.get("stale"):
+        st.warning(
+            f"⚠️ The last verified day is {lag} days old: the daily run has not caught up "
+            "(on a normal day it is one or two days old)."
+        )
     man = store().manifest()
     if man.height:
         st.subheader("Downloads per day and status")

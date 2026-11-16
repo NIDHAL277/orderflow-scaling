@@ -7,13 +7,26 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from ofs.store import STALE_AFTER_DAYS
+
 
 class Health(BaseModel):
-    """Response of ``GET /health``: pipeline status, counts, failures, disk."""
+    """Response of ``GET /health``: pipeline status, data age, counts, failures, disk."""
 
-    status: str = Field(description="ok, or degraded when the last daily run reported a problem")
+    status: str = Field(
+        description=(
+            "ok; stale when the last verified day is more than "
+            f"{STALE_AFTER_DAYS} days old; degraded when the last daily run reported a problem"
+        )
+    )
     version: str
     last_ok_day: dt.date | None = Field(None, description="Most recent day downloaded and verified")
+    data_lag_days: int | None = Field(
+        None, description="Days between today (UTC) and the last verified day"
+    )
+    stale: bool = Field(
+        False, description=f"The last verified day is more than {STALE_AFTER_DAYS} days old"
+    )
     manifest_counts: dict[str, int] = Field(default_factory=dict)
     validation_failures: int | None = Field(
         None, description="Pair-days blocked by a validation control, at the last daily run"
