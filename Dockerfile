@@ -7,10 +7,6 @@ ARG TARGETARCH
 ARG SUPERCRONIC_VERSION=v0.2.51
 ARG SUPERCRONIC_SHA256_amd64=cc232108374e8e2b537045f2d5eaa1229f619db314c3ba6a14d38b35dc0aa123
 ARG SUPERCRONIC_SHA256_arm64=4ae22576a78223d8ccdf5f3b3660a5cbb5288416bf0ca96afc4a36d195932b94
-# Provenance and protocol state, filled in by CI at build time (docs/adr/0006).
-ARG GIT_SHA=dev
-ARG PROTOCOL_TAGS=""
-ARG FROZEN_CONFIG_SHA256=""
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -63,6 +59,12 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 RUN useradd --create-home --uid 1000 ofs && mkdir -p /data && chown ofs /data
 USER ofs
+# Provenance and protocol state, filled in by CI at build time (docs/adr/0006). Declared
+# here, after every RUN: a build argument enters the cache key of each RUN that follows
+# it, and the commit hash changes at every build.
+ARG GIT_SHA=dev
+ARG PROTOCOL_TAGS=""
+ARG FROZEN_CONFIG_SHA256=""
 ENV OFS_ROOT=/app \
     OFS_DATA_DIR=/data \
     OFS_CODE_VERSION=${GIT_SHA} \
