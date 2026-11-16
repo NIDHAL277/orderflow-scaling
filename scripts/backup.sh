@@ -12,7 +12,11 @@ if [[ -z "${RCLONE_CONFIG_R2_ACCESS_KEY_ID:-}" ]]; then
   exit 0
 fi
 
-for table in daily_stats estimates tests manifest validation simulation status; do
+# Every derived table: the statistics the daily run continues from, the results, the live
+# forecasts and their track record (which cannot be recomputed), and what the dashboard
+# shows besides (data quality, regime monitor, comparison of venues).
+for table in daily_stats estimates tests forecast manifest validation simulation status \
+    quality monitoring venues; do
   if [[ -d "${DATA_DIR}/${table}" ]]; then
     rclone sync "${DATA_DIR}/${table}" "${REMOTE}/${table}" --fast-list --transfers 8 --checksum
   fi
