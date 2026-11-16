@@ -32,6 +32,8 @@ Forecasting the average of the next 22 days (mean QLIKE ratio, below 1: the mode
 
 <!-- results:end -->
 
+Read more: the [paper](paper/main.pdf) (PDF) and its [slides](paper/slides.pdf), [how to read these decisions](docs/design-faq.md), the [pre-registration](config/preregistration.md) and the [deviations](config/deviations.md) from it, and the same `H0` measured on [two other exchanges](docs/venues.md).
+
 **At a glance**
 
 * **Data**: 24 months of every Binance trade for 60 pairs, spot and USD-M perpetuals
@@ -147,7 +149,7 @@ perpetuals from the WebSocket diff-depth stream (Binance's sequence rules, resyn
 gap) and records 1-second books and every trade to hourly Parquet files, for a future
 propagator model ([docs/l2-collector.md](docs/l2-collector.md)).
 
-## Status (2026-11-15)
+## Status (2026-11-16)
 
 | Phase | State |
 |---|---|
@@ -155,10 +157,10 @@ propagator model ([docs/l2-collector.md](docs/l2-collector.md)).
 | P1 Ingestion and reduction | done and hardened on real data: statistics = naive computation to 3.5e-15; a BTCUSDT perpetual day of 4.3 M trades (2025-10-10 crash) reduced in 13.9 s with 1.4 GB peak memory (target < 60 s, < 8 GB) |
 | P2 Simulation and estimators | done: full study (82 cells, 200 replications of 365 days); estimator roles and calibration k fixed by the pre-registered rule (1.14, then 1.06 after the H0 re-run of D4); `H_σ` flagged as limited |
 | P3 Full universe, development | done: 60 pairs, 59 perpetuals (PAXG and WBTC left out by decision); 24-month backfill (2024-11-01 → 2026-10-31) with 86,694 of 86,870 pair-days reduced, 145 rejected by a control and none unexplained (O1 met); 5-year daily-volatility history; development estimates, tests and forecasts run twice, before and after deviations D3 and D4 |
-| P4 Confirmation and tests | configuration frozen on 2026-11-14 (tag `config-frozen`) before the first estimate on the confirmation sample; confirmation run in progress |
-| P5 Production | Docker, compose, Caddy, cron, Healthchecks, R2 backups; the daily run replays late files and applies re-published ones; guide and set-up script for an Oracle Cloud VM ready, deployment pending |
-| P6 Report | LaTeX paper and 10-slide deck built from the generated figures and tables (tests, levels, reading aids, controls, power); confirmation results pending |
-| Forecasting (F) | models, evaluation, live forecasts, API, dashboard page and report table done and validated on simulated rough volatility; development run on real data done; confirmation after `config-frozen` |
+| P4 Confirmation and tests | done: configuration frozen on 2026-11-14 (tag `config-frozen`) before the first estimate on the confirmation sample; confirmation run finished on 2026-11-16, results at the top of this page |
+| P5 Production | Docker, compose, Caddy, cron, Healthchecks, R2 backups; the daily run replays late files and applies re-published ones; image built and tested locally (command line, API, dashboard); the CI job rehearsed in a Linux container; guide and set-up script for an Oracle Cloud VM ready, deployment pending |
+| P6 Report | LaTeX paper and 10-slide deck built from the generated figures and tables (tests, levels, reading aids, controls, power); confirmation results in, conclusion written: [paper](paper/main.pdf), [slides](paper/slides.pdf) |
+| Forecasting (F) | models, evaluation, live forecasts, API, dashboard page and report table done and validated on simulated rough volatility; development and confirmation runs on real data done (results at the top of this page) |
 | Spec extensions | change-point monitor of `H0` and L2 collector done (collector checked live: 2,446 trades, 0 resyncs in 20 s); `H0` compared with two other exchanges on their public trades ([Bybit and OKX, exploratory](docs/venues.md)); kdb+/q not started (needs a licence) |
 
 What the real data changed is recorded as decisions and incident notes:

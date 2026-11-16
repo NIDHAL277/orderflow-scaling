@@ -31,8 +31,6 @@ paper/*.blg
 paper/*.fdb_latexmk
 paper/*.fls
 paper/*.synctex.gz
-paper/main.pdf
-paper/slides.pdf
 site/
 
 # local env
