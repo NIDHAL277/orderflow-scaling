@@ -45,13 +45,20 @@ RUN set -eux; \
 
 COPY --from=uv /uv /uvx /bin/
 WORKDIR /app
-COPY pyproject.toml uv.lock README.md LICENSE ./
+# Dependencies first, from the lock file alone: this layer, with its bytecode, is rebuilt
+# only when they change (the README is rewritten by every report and used to invalidate it).
+COPY pyproject.toml uv.lock ./
 RUN --mount=type=cache,target=/root/.cache/uv uv sync --frozen --no-dev --no-install-project
+COPY README.md LICENSE ./
 COPY src ./src
 COPY config ./config
 COPY dashboards ./dashboards
 COPY scripts ./scripts
-RUN --mount=type=cache,target=/root/.cache/uv uv sync --frozen --no-dev \
+# The project itself is installed editable from /app/src: only its own bytecode is compiled
+# here, so a change of code does not recompile every dependency.
+RUN --mount=type=cache,target=/root/.cache/uv \
+    UV_COMPILE_BYTECODE=0 uv sync --frozen --no-dev \
+ && python -m compileall -q src \
  && chmod +x scripts/*.sh
 
 RUN useradd --create-home --uid 1000 ofs && mkdir -p /data && chown ofs /data
