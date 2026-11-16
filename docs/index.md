@@ -48,8 +48,8 @@ Beyond the core tests:
   `H0` leaves its development range.
 * [L2 collector](l2-collector.md): local order books of the perpetuals from the WebSocket
   stream, sampled every second with every trade.
-* [Second venue](venues.md): the same `H0` on Bybit's public trades, to see how much the
-  answer depends on the exchange (exploratory).
+* [Other venues](venues.md): the same `H0` on the public trades of Bybit and OKX, to see
+  how much the answer depends on the exchange (exploratory).
 
 "Production grade" here means: one command rebuilds every result from scratch, the
 pipeline updates itself every day, every module has its tests, everything runs in a

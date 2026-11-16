@@ -159,7 +159,7 @@ propagator model ([docs/l2-collector.md](docs/l2-collector.md)).
 | P5 Production | Docker, compose, Caddy, cron, Healthchecks, R2 backups; the daily run replays late files and applies re-published ones; guide and set-up script for an Oracle Cloud VM ready, deployment pending |
 | P6 Report | LaTeX paper and 10-slide deck built from the generated figures and tables (tests, levels, reading aids, controls, power); confirmation results pending |
 | Forecasting (F) | models, evaluation, live forecasts, API, dashboard page and report table done and validated on simulated rough volatility; development run on real data done; confirmation after `config-frozen` |
-| Spec extensions | change-point monitor of `H0` and L2 collector done (collector checked live: 2,446 trades, 0 resyncs in 20 s); a second venue compared on `H0` ([Bybit, exploratory](docs/venues.md): same persistence on perpetuals, noisier on its thinner spot market); kdb+/q not started (needs a licence) |
+| Spec extensions | change-point monitor of `H0` and L2 collector done (collector checked live: 2,446 trades, 0 resyncs in 20 s); `H0` compared with two other exchanges on their public trades ([Bybit and OKX, exploratory](docs/venues.md)); kdb+/q not started (needs a licence) |
 
 What the real data changed is recorded as decisions and incident notes:
 [ADR 0009](docs/adr/0009-ohlc-check-in-ticks.md) (OHLC check),

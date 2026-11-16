@@ -7,6 +7,7 @@ so ``make report`` always rebuilds a complete paper.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -452,62 +453,69 @@ def forecast_ratios(tests: pl.DataFrame, path: Path) -> Path:
     return path
 
 
-VENUE_LABELS = {"binance": "Binance", "bybit": "Bybit"}
+VENUE_MARKERS = {"binance": ("o", True), "bybit": ("o", False), "okx": ("D", False)}
 
 
 def venues(table: pl.DataFrame, path: Path, title: str) -> Path:
-    """Exploratory figure: ``H0`` of the same pairs on two venues, one panel per market.
+    """Exploratory figure: ``H0`` of the same pairs on several venues, one panel per market.
 
-    Colour keeps its meaning (the market); the venue is the fill of the marker.
+    Colour keeps its meaning (the market); the venue is the shape and fill of the marker.
     """
     from matplotlib.lines import Line2D
 
-    from ofs.venues.bybit import at_bound
+    from ofs.venues.common import REFERENCE, at_bound, label
 
     ok = table.filter(pl.col("h0").is_finite()) if table.height else table
     if ok.height == 0:
-        return _placeholder(path, "H0 on two venues", "run `ofs venue-bybit` first")
+        return _placeholder(path, "H0 on several venues", "run `ofs venues` first")
     markets = [m for m in ("spot", "um") if m in set(ok["market"].to_list())]
     symbols = list(dict.fromkeys(ok["symbol"].to_list()))
+    names = sorted(dict.fromkeys(ok["venue"].to_list()), key=lambda v: v != REFERENCE)
+    step = 0.68 / len(names)
+    offsets = {v: ((len(names) - 1) / 2 - i) * step for i, v in enumerate(names)}
+
+    def marker_style(venue: str, color: str) -> dict[str, Any]:
+        marker, filled = VENUE_MARKERS.get(venue, ("s", False))
+        return {
+            "marker": marker,
+            "ms": 6.5 if marker == "o" else 5.5,
+            "color": color if filled else "white",
+            "mec": "white" if filled else color,
+            "mew": 1.0 if filled else 1.6,
+        }
+
     fig, axes = plt.subplots(
         1,
         len(markets),
-        figsize=(7.0, 1.4 + 0.45 * len(symbols)),
+        figsize=(7.0, 1.4 + (0.15 + 0.15 * len(names)) * len(symbols)),
         sharex=True,
         sharey=True,
         squeeze=False,
     )
+    flagged = False
     for ax, market in zip(axes[0], markets, strict=True):
         color = style.MARKET_COLORS[market]
-        for venue, dy in (("binance", 0.17), ("bybit", -0.17)):
+        for venue in names:
             rows = ok.filter((pl.col("market") == market) & (pl.col("venue") == venue))
-            filled = venue == "binance"
             for r in rows.iter_rows(named=True):
-                y = len(symbols) - 1 - symbols.index(r["symbol"]) + dy
+                y = len(symbols) - 1 - symbols.index(r["symbol"]) + offsets[venue]
                 lo, hi = r["ci_low"], r["ci_high"]
                 if lo is not None and hi is not None and np.isfinite(lo) and np.isfinite(hi):
                     ax.hlines(y, lo, hi, color=color, lw=2.0, zorder=2)
-                ax.plot(
-                    r["h0"],
-                    y,
-                    "o",
-                    ms=6.5,
-                    color=color if filled else "white",
-                    mec="white" if filled else color,
-                    mew=1.0 if filled else 1.6,
-                    zorder=3,
-                )
-                if at_bound(r["h0"]):  # not identified: say so next to the point
+                ax.plot(r["h0"], y, ls="", zorder=3, **marker_style(venue, color))
+                if at_bound(r["h0"]):  # not identified: a dagger, explained in the legend
+                    flagged = True
                     high = r["h0"] > 0.5
                     ax.annotate(
-                        "at the bound",
+                        "†",
                         (r["h0"], y),
-                        xytext=(-7 if high else 7, -6),
+                        xytext=(8 if high else -8, 0),
                         textcoords="offset points",
-                        ha="right" if high else "left",
-                        va="top",
-                        fontsize=7,
-                        color=style.MUTED,
+                        ha="left" if high else "right",
+                        va="center",
+                        fontsize=8,
+                        color=style.INK_2,
+                        annotation_clip=False,
                     )
         ax.set_title(style.MARKET_LABELS[market], loc="left", fontsize=9)
         ax.set_ylim(-0.6, len(symbols) - 0.4)
@@ -518,16 +526,17 @@ def venues(table: pl.DataFrame, path: Path, title: str) -> Path:
         "persistence H0 of the signed order flow (95 % interval)", fontsize=9, color=style.INK_2
     )
     fig.suptitle(title, x=0.02, ha="left", fontsize=10)
-    handles = [
-        Line2D([], [], ls="", marker="o", ms=6.5, color=style.INK_2, mec="white", mew=1.0),
-        Line2D([], [], ls="", marker="o", ms=6.5, color="white", mec=style.INK_2, mew=1.6),
-    ]
+    handles = [Line2D([], [], ls="", **marker_style(v, style.INK_2)) for v in names]
+    labels = [label(v) for v in names]
+    if flagged:
+        handles.append(Line2D([], [], ls="", marker="$†$", ms=7, color=style.INK_2))
+        labels.append("on a bound of the search range")
     fig.legend(
         handles,
-        [VENUE_LABELS["binance"], VENUE_LABELS["bybit"]],
+        labels,
         loc="lower center",
         bbox_to_anchor=(0.5, -0.12),
-        ncol=2,
+        ncol=len(handles),
         fontsize=8,
     )
     fig.savefig(path, dpi=200, facecolor="white")

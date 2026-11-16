@@ -19,12 +19,18 @@
 \providecommand{\resultHOneBoth}{pending}
 \providecommand{\resultHTwoBoth}{pending}
 \providecommand{\resultHThreeBoth}{pending}
-\providecommand{\venuePairsPerp}{pending}
-\providecommand{\venueDiffPerp}{pending}
-\providecommand{\venueMaxDiffPerp}{pending}
-\providecommand{\venuePairsSpot}{pending}
-\providecommand{\venueDiffSpot}{pending}
-\providecommand{\venueMaxDiffSpot}{pending}
+\providecommand{\venueBybitPairsPerp}{pending}
+\providecommand{\venueBybitDiffPerp}{pending}
+\providecommand{\venueBybitMaxDiffPerp}{pending}
+\providecommand{\venueBybitPairsSpot}{pending}
+\providecommand{\venueBybitDiffSpot}{pending}
+\providecommand{\venueBybitMaxDiffSpot}{pending}
+\providecommand{\venueOkxPairsPerp}{pending}
+\providecommand{\venueOkxDiffPerp}{pending}
+\providecommand{\venueOkxMaxDiffPerp}{pending}
+\providecommand{\venueOkxPairsSpot}{pending}
+\providecommand{\venueOkxDiffSpot}{pending}
+\providecommand{\venueOkxMaxDiffSpot}{pending}
 \providecommand{\nPairs}{60}
 \providecommand{\nPerps}{59}
 \providecommand{\pairDays}{pending}
@@ -418,12 +424,13 @@ perpetual).}
 The impact exponent rests on a proxy: runs of same-side trades mix independent traders, and
 their duration is not the execution horizon of a meta-order. All assets trade on one
 exchange; crypto order flow fragments across venues, and the persistence measured on one
-venue need not equal that of the aggregate flow. An exploratory comparison with Bybit's
-public trades over one month (documentation, \emph{A second venue}) finds the same
-persistence on perpetuals: over \venuePairsPerp{} pairs, Binance minus Bybit averages
-\venueDiffPerp{} and never exceeds \venueMaxDiffPerp{} in absolute value. On spot, where
-Bybit trades several times less, the estimates are less precise and differ more
-(\venueDiffSpot{} on average over \venuePairsSpot{} pairs).
+venue need not equal that of the aggregate flow. An exploratory comparison with the
+public trades of Bybit and OKX over one month (documentation, \emph{Other venues}) gives,
+on perpetuals, a difference of $\Hz$ with Binance of \venueBybitDiffPerp{} on average for
+Bybit (\venueBybitPairsPerp{} pairs, at most \venueBybitMaxDiffPerp{} in absolute value) and
+of \venueOkxDiffPerp{} for OKX (\venueOkxPairsPerp{} pairs, at most \venueOkxMaxDiffPerp{});
+on spot, \venueBybitDiffSpot{} and \venueOkxDiffSpot{}. On perpetuals these differences
+are small next to the gap between spot and perpetuals measured on Binance (H5).
 Twelve months is short for daily-horizon
 roughness: on one year of daily data the estimate of $\Hs$ often sits on the lower bound
 of its range (table~\ref{tab:reading}), which the five-year variant only partly addresses

@@ -18,9 +18,9 @@ public source gives the best trade-level data for the tests, for free and reprod
 | Source | Trade data | Aggressor side | Access | Integrity | Verdict |
 |---|---|---|---|---|---|
 | **Binance Vision** (data.binance.vision) | `aggTrades` and `trades` per day and per month, spot, USD-M and COIN-M; 1-minute klines | yes (`is_buyer_maker`) | free, no key; S3 listing of every file | SHA-256 `.CHECKSUM` per file | **primary source** |
-| **Bybit public archive** (public.bybit.com) | trades per day: linear perpetuals (`trading/`) and spot (`spot/`) | yes (`side`) | free, no key | no checksums | best second exchange, kept for an extension |
+| **Bybit public archive** (public.bybit.com) | trades per day: linear perpetuals (`trading/`) and spot (`spot/`) | yes (`side`) | free, no key | no checksums | used by the comparison of venues ([Other venues](venues.md)) |
 | Kraken (downloadable trade history) | trade history per pair | ambiguous in the published files | free | none found | not retained |
-| OKX | no official bulk archive found in the survey | | | | not retained |
+| **OKX public archive** (www.okx.com/cdn/okex/traderecords) | trades per day of Hong Kong time: spot and linear perpetuals (`-SWAP`) | yes (`side`) | free, no key | no checksums (zip CRC) | used by the comparison of venues; missed by the first survey, found on 2026-11-15 |
 | Tardis.dev | tick-level trades and books, many exchanges | yes | paid (only the first day of each month is free) | | spot checks only |
 | Kaiko, CoinAPI | tick-level, many exchanges | yes | paid | | out of budget |
 
@@ -55,6 +55,20 @@ Read on 2026-11-09: Binance Vision Dataset Terms, version 1.0, last updated 2026
 | §8.2-8.3 | do not imply that Binance sponsors or endorses the work | "not affiliated with or endorsed by Binance" wherever results are shown |
 | §9.2 | no de-anonymisation of transaction identifiers | ids are used only to check file continuity |
 | §6, §10 | not advice; data provided as is | "not investment advice"; every file is checked (SHA-256, blocking controls) |
+
+## OKX archive (for the extension)
+
+Checked on the real files:
+
+* `https://www.okx.com/cdn/okex/traderecords/trades/daily/{YYYYMMDD}/{INSTRUMENT}-trades-{YYYY-MM-DD}.zip`,
+  with `INSTRUMENT` `BTC-USDT` (spot) or `BTC-USDT-SWAP` (linear perpetual); columns
+  `instrument_name, trade_id, side, price, size, created_time (ms), source`.
+* The file named for a day runs from 16:00 UTC the day before to 16:00 UTC (a day of
+  UTC+8): a UTC day needs two files.
+* `side` is the taker's: on 2026-10-31 a buy came on an uptick 91 % of the time on spot
+  and 99 % on the perpetual. `size` is in the base asset on spot, in contracts on
+  perpetuals. `source` takes the values 0 and 1; both are kept.
+* One row per fill, sorted by time, with unique `trade_id`.
 
 ## Bybit archive (for the extension)
 

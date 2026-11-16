@@ -604,25 +604,28 @@ def changepoints(
         )
 
 
-@app.command("venue-bybit")
-def venue_bybit(
+@app.command("venues")
+def venues_command(
     ctx: typer.Context,
     to: DateOpt,
     days: Annotated[int, typer.Option(help="Number of days ending at --to")] = 30,
     market: MarketChoice = MarketChoice.all,
     symbols: Annotated[list[str] | None, typer.Option("--symbol")] = None,
+    venue: Annotated[
+        list[str] | None, typer.Option("--venue", help="bybit, okx (default: both)")
+    ] = None,
     reps: Annotated[int, typer.Option(help="Bootstrap replicates per interval")] = 200,
     keep_raw: Annotated[bool, typer.Option(help="Keep the downloaded files")] = False,
     publish: Annotated[
-        bool, typer.Option(help="Also write docs/img/venues_bybit.png and the docs/venues.md table")
+        bool, typer.Option(help="Also write docs/img/venues.png and the docs/venues.md table")
     ] = False,
 ) -> None:
-    """Exploratory: H0 on Bybit's public trades against Binance, same pairs and days.
+    """Exploratory: H0 on other exchanges' public trades against Binance, same pairs and days.
 
-    Data under <data>/venues/bybit, apart from Binance's; outside the frozen protocol.
+    Data under <data>/venues/<name>, apart from Binance's; outside the frozen protocol.
     """
     from ofs.protocol import ProtocolError, check_estimation_allowed
-    from ofs.venues import bybit
+    from ofs.venues import ADAPTERS, common
 
     project = _project(ctx)
     try:
@@ -630,20 +633,28 @@ def venue_bybit(
     except ProtocolError as exc:
         typer.echo(f"protocol: {exc}", err=True)
         raise typer.Exit(code=2) from exc
+    names = venue or list(ADAPTERS)
+    unknown = [name for name in names if name not in ADAPTERS]
+    if unknown:
+        raise typer.BadParameter(f"unknown venue: {', '.join(unknown)}")
     end = to.date()
     span = [end - dt.timedelta(days=k) for k in range(days - 1, -1, -1)]
     chosen = symbols or [p.symbol for p in project.universe.top(5)]
     markets = _markets(market)
-    root = project.data_dir / "venues" / "bybit"
-    for symbol in chosen:
-        for m in markets:
-            counts = bybit.reduce_days(project, root, symbol, m, span, keep_raw=keep_raw)
-            typer.echo(
-                f"{symbol:<12} {m:<5} reduced {counts['reduced']}, missing {counts['missing']}, "
-                f"failed {counts['failed']}"
-            )
-    table = bybit.compare(project, root, chosen, markets, span, reps=reps)
-    out = root / f"h0_{span[0]:%Y%m%d}_{end:%Y%m%d}.parquet"
+    roots = {name: project.data_dir / "venues" / name for name in names}
+    for name, venue_root in roots.items():
+        for symbol in chosen:
+            for m in markets:
+                counts = common.reduce_days(
+                    project, venue_root, ADAPTERS[name], symbol, m, span, keep_raw=keep_raw
+                )
+                typer.echo(
+                    f"{name:<6} {symbol:<12} {m:<5} reduced {counts['reduced']}, "
+                    f"missing {counts['missing']}, failed {counts['failed']}"
+                )
+    table = common.compare(project, roots, chosen, markets, span, reps=reps)
+    out = project.data_dir / "venues" / f"h0_{span[0]:%Y%m%d}_{end:%Y%m%d}.parquet"
+    out.parent.mkdir(parents=True, exist_ok=True)
     table.write_parquet(out)
     for row in table.iter_rows(named=True):
         typer.echo(
@@ -652,7 +663,7 @@ def venue_bybit(
         )
     typer.echo(f"written {out}")
     if publish:
-        image = bybit.publish(project, table, f"{span[0]:%Y-%m-%d} to {end:%Y-%m-%d}")
+        image = common.publish(project, table, f"{span[0]:%Y-%m-%d} to {end:%Y-%m-%d}")
         typer.echo(f"written {image}")
 
 
