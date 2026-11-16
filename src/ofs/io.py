@@ -124,7 +124,8 @@ def read_table_cached(table_dir: Path, cache: Path) -> pl.DataFrame:
         frames.append(fresh)
     out = pl.concat(frames, how="diagonal_relaxed") if frames else pl.DataFrame()
     if new or kept.height != cached.height:
-        write_parquet_atomic(out, cache)
+        with contextlib.suppress(OSError):  # data mounted read-only (API, dashboard): no cache
+            write_parquet_atomic(out, cache)
     return out.drop("_file", "_mtime") if out.width else out
 
 

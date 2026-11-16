@@ -104,7 +104,11 @@ def health_page() -> None:
             hide_index=True,
             width="stretch",
         )
-    val = store().validation()
+    details = st.toggle(
+        "Validation details",
+        help="Reads every validation report (about 86,000 files for two years): slow at first.",
+    )
+    val = store().validation() if details else pl.DataFrame()
     if val.height:
         failed = val.filter(pl.col("blocking") & ~pl.col("passed"))
         st.subheader(

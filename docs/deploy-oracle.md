@@ -70,7 +70,7 @@ pipeline downloads what it needs. From the laptop, in the repository:
 
 ```bash
 cd data
-tar czf - daily_stats estimates tests forecast manifest validation simulation status \
+tar czf - daily_stats estimates tests forecast manifest validation simulation status cache \
   | ssh ubuntu@<public-address> "tar xzf - -C orderflow-scaling/data"
 ssh ubuntu@<public-address> "sudo chown -R 1000:1000 orderflow-scaling/data"
 ```

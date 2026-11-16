@@ -103,6 +103,9 @@ def test_dashboard_pages_render(
     at.switch_page(page).run()
     assert not at.exception, at.exception
     assert at.title[0].value  # every page has a title
+    if page == "pages/health.py":  # the validation reports are read only on demand
+        at.toggle[0].set_value(True).run()
+        assert not at.exception, at.exception
 
 
 def test_dashboard_on_empty_store(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

@@ -211,3 +211,20 @@ def test_process_pools_spawn_their_workers() -> None:
     with process_pool(2) as pool:
         assert pool._mp_context.get_start_method() == "spawn"  # type: ignore[attr-defined]
         assert list(pool.map(abs, [-1, -2, -3])) == [1, 2, 3]
+
+
+def test_cached_table_is_served_when_the_cache_cannot_be_written(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import ofs.io as io
+
+    table = tmp_path / "table"
+    write_parquet_atomic(pl.DataFrame({"a": [1, 2]}), table / "x.parquet")
+
+    def read_only(*args: object, **kwargs: object) -> None:
+        raise OSError("read-only file system")
+
+    monkeypatch.setattr(io, "write_parquet_atomic", read_only)  # data mounted read-only
+    out = read_table_cached(table, tmp_path / "cache" / "t.parquet")
+    assert out["a"].to_list() == [1, 2]
+    assert not (tmp_path / "cache").exists()
