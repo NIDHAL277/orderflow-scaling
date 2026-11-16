@@ -30,6 +30,8 @@ root, such as Avast's "Web/Mail Shield"): the build's downloads fail with
 `curl: (60) unable to get local issuer certificate`. Export that root certificate as PEM
 and pass it as a build secret, which only the local image then trusts:
 `docker build --secret id=extra_ca,src=root.pem -t orderflow-scaling:local .`
+The proxy image takes the same secret:
+`docker build -f docker/caddy.Dockerfile --secret id=extra_ca,src=root.pem -t ofs-caddy .`
 
 Rehearsing the CI job before a push, when developing on Windows or macOS: the workflow
 runs on Linux, where some things differ (worker processes are forked, not spawned; file
