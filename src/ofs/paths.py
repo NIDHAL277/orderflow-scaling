@@ -168,3 +168,8 @@ class DataLayout:
     def status_file(self) -> Path:
         """Status of the last daily run."""
         return self.root / "status" / "pipeline_status.json"
+
+    @property
+    def snapshot_file(self) -> Path:
+        """Manifest of a results snapshot, present only in a directory unpacked from one."""
+        return self.root / "snapshot.json"

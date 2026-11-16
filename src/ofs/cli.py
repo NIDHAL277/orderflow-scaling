@@ -40,6 +40,10 @@ simulate_app = typer.Typer(
     no_args_is_help=True, help="Simulation study and simulator checks (M4/M5)."
 )
 app.add_typer(simulate_app, name="simulate")
+snapshot_app = typer.Typer(
+    no_args_is_help=True, help="Results snapshot: browse the results without running the pipeline."
+)
+app.add_typer(snapshot_app, name="snapshot")
 
 
 class MarketChoice(StrEnum):
@@ -602,6 +606,47 @@ def changepoints(
             f"{row['symbol']:<12} {row['market']:<5} {row['block_start']}  z={row['z']:+.2f} "
             f"cusum={row['cusum_alarm']} sr={row['sr_alarm']}"
         )
+
+
+@snapshot_app.command("export")
+def snapshot_export(
+    ctx: typer.Context,
+    out: Annotated[Path, typer.Option(help="Zip file to write")] = Path("results-snapshot.zip"),
+) -> None:
+    """Pack the result tables the dashboard and the API read into one zip file."""
+    from ofs.snapshot import export_snapshot
+
+    manifest = export_snapshot(_project(ctx).data_dir, out)
+    summary = {
+        "out": str(out),
+        "files": len(manifest["files"]),
+        "megabytes": round(out.stat().st_size / 1e6, 1),
+        "last_ok_day": manifest["last_ok_day"],
+    }
+    typer.echo(json.dumps(summary, indent=1))
+
+
+@snapshot_app.command("fetch")
+def snapshot_fetch(
+    source: Annotated[
+        str | None, typer.Option(help="URL or local zip file (default: the latest release)")
+    ] = None,
+    into: Annotated[Path, typer.Option(help="Directory to unpack into")] = Path("snapshot"),
+    force: Annotated[bool, typer.Option(help="Overwrite a pipeline data directory")] = False,
+) -> None:
+    """Download a results snapshot, check every file, and unpack it."""
+    from ofs.snapshot import DEFAULT_URL, fetch_snapshot
+
+    try:
+        manifest = fetch_snapshot(source or DEFAULT_URL, into, force=force)
+    except ValueError as exc:
+        typer.echo(f"snapshot refused: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+    typer.echo(
+        f"{len(manifest['files'])} files exported on {manifest['exported_at'][:10]} "
+        f"(data to {manifest['last_ok_day']}) in {into}"
+    )
+    typer.echo(f"Browse them: OFS_DATA_DIR={into} uv run streamlit run dashboards/app.py")
 
 
 @app.command("venues")

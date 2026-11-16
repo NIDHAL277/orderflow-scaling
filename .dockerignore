@@ -13,3 +13,5 @@ site
 .benchmarks
 **/__pycache__
 .env
+snapshot
+results-snapshot.zip*

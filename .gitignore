@@ -18,6 +18,10 @@ htmlcov/
 # data never goes to git (Binance terms: only derived statistics are published)
 data/*
 !data/.gitkeep
+# results snapshot: published as a release file (`ofs snapshot export`), unpacked locally
+/snapshot/
+results-snapshot.zip
+results-snapshot.zip.part
 
 # generated report artefacts (rebuilt by `make report`)
 paper/figures/*.pdf

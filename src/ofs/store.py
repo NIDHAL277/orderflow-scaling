@@ -8,6 +8,7 @@ interpolated into SQL (the project path itself contains quotes).
 from __future__ import annotations
 
 import datetime as dt
+import json
 from pathlib import Path
 from typing import Any
 
@@ -250,3 +251,15 @@ class Store:
             "disk_used_fraction": round(disk_fraction(self.layout.root), 4),
             "pipeline": status,
         }
+
+    def snapshot_info(self) -> dict[str, Any] | None:
+        """Manifest of the results snapshot this directory was unpacked from, else None.
+
+        A snapshot is a frozen export (``ofs snapshot``): the pipeline does not run on it,
+        so its health says nothing about a live pipeline.
+        """
+        path = self.layout.snapshot_file
+        if not path.is_file():
+            return None
+        info = json.loads(path.read_text(encoding="utf-8"))
+        return info if isinstance(info, dict) else None

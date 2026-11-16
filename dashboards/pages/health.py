@@ -15,6 +15,12 @@ STATUS = {"ok": "🟢 ok", "stale": "🟡 behind", "degraded": "🟠 degraded"}
 def health_page() -> None:
     st.title("Pipeline health")
     h = store().health()
+    snap = store().snapshot_info()
+    if snap:
+        st.info(
+            f"Results snapshot exported on {str(snap.get('exported_at', ''))[:10]}: the pipeline "
+            "does not run here, so what follows is the state at the export."
+        )
     pipe = h.get("pipeline", {})
     lag = h.get("data_lag_days")
     c = st.columns(4)
@@ -29,7 +35,7 @@ def health_page() -> None:
     c[3].metric("Disk used", f"{h.get('disk_used_fraction', 0):.0%}")
     if pipe.get("last_error"):
         st.warning(f"⚠️ Last run: {pipe['last_error']}")
-    if h.get("stale"):
+    if h.get("stale") and not snap:
         st.warning(
             f"⚠️ The last verified day is {lag} days old: the daily run has not caught up "
             "(on a normal day it is one or two days old)."

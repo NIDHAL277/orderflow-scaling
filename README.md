@@ -182,6 +182,16 @@ Seven read-only pages on the result tables:
 
 With the result tables in `data/`: `uv run streamlit run dashboards/app.py`, or
 `docker compose up -d` for the whole stack behind Caddy (`https://dashboard.localhost`).
+
+Without running the pipeline: each release carries the result tables as
+`results-snapshot.zip` (no raw Binance file; every member is checked against the
+snapshot's manifest, SHA-256 included, before anything is written):
+
+```bash
+uv run ofs snapshot fetch                                      # latest release -> snapshot/
+OFS_DATA_DIR=snapshot uv run streamlit run dashboards/app.py    # PowerShell: $env:OFS_DATA_DIR="snapshot"
+```
+
 The blue and white glass theme lives in [dashboards/theme.py](dashboards/theme.py) and
 [.streamlit/config.toml](.streamlit/config.toml); its animations stop for readers who ask
 for reduced motion.

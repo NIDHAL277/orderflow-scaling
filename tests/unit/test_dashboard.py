@@ -139,3 +139,24 @@ def test_dashboard_on_empty_store(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
     at.run()
     assert not at.exception
     assert any("No test results" in i.value for i in at.info)
+
+
+def test_dashboard_on_a_results_snapshot(
+    results_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from ofs.snapshot import export_snapshot, fetch_snapshot
+
+    archive = tmp_path / "results-snapshot.zip"
+    export_snapshot(results_dir, archive)
+    into = tmp_path / "snapshot"
+    fetch_snapshot(str(archive), into)
+    monkeypatch.setenv("OFS_DATA_DIR", str(into))
+    at = AppTest.from_file(APP, default_timeout=60)
+    at.run()
+    assert not at.exception
+    assert any("Results snapshot" in m.value for m in at.markdown)  # not a live pipeline
+    for page in PAGES:
+        at.switch_page(page).run()
+        assert not at.exception, (page, at.exception)
+    at.switch_page("pages/health.py").run()
+    assert any("snapshot" in i.value for i in at.info)
