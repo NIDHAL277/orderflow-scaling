@@ -49,6 +49,7 @@ COPY README.md LICENSE ./
 COPY src ./src
 COPY config ./config
 COPY dashboards ./dashboards
+COPY .streamlit ./.streamlit
 COPY scripts ./scripts
 # The project itself is installed editable from /app/src: only its own bytecode is compiled
 # here, so a change of code does not recompile every dependency.

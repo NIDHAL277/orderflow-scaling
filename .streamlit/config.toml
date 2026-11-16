@@ -1,0 +1,28 @@
+# Look of the dashboard (blue and white glass); dashboards/theme.py adds the translucent panels.
+# Read by `streamlit run dashboards/app.py` from the repository root, and from /app in the image.
+
+[theme]
+base = "light"
+primaryColor = "#1D4ED8"
+backgroundColor = "#F4F7FD"
+secondaryBackgroundColor = "#EAF0FB"
+textColor = "#0B1220"
+linkColor = "#1D4ED8"
+borderColor = "#D3DDEE"
+showSidebarBorder = false
+baseRadius = "0.75rem"
+buttonRadius = "0.75rem"
+font = "Inter:https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap, sans-serif"
+headingFont = "Space Grotesk:https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&display=swap, sans-serif"
+headingFontWeights = [700, 700, 600, 600, 600, 600]
+metricValueFontSize = "1.9rem"
+# spot and perpetual first, as everywhere in the project; then distinct, colour-blind safe hues
+chartCategoricalColors = ["#2A78D6", "#EB6834", "#0F766E", "#6D28D9", "#B45309", "#BE185D", "#64748B", "#94A3B8"]
+
+[theme.sidebar]
+backgroundColor = "#F7FAFF"
+secondaryBackgroundColor = "#EAF0FB"
+
+[client]
+# visitors get the reader's menu, without the developer tools (Deploy, Rerun, Clear cache)
+toolbarMode = "viewer"

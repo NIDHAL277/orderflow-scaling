@@ -1,4 +1,4 @@
-"""The Streamlit dashboard renders its five pages without exceptions (M9)."""
+"""The Streamlit dashboard renders its seven pages without exceptions (M9)."""
 
 from __future__ import annotations
 
@@ -19,9 +19,11 @@ from ofs.simulate.study import load_simulation_config, run_study
 
 APP = str(REPO / "dashboards" / "app.py")
 PAGES = (
+    "pages/overview.py",
     "pages/tests.py",
     "pages/asset.py",
     "pages/forecast.py",
+    "pages/venues.py",
     "pages/health.py",
     "pages/simulation.py",
 )
@@ -89,6 +91,29 @@ def results_dir(tmp_path_factory: pytest.TempPathFactory) -> Path:
         out.with_columns(pl.lit(s).alias("symbol"), pl.lit("spot").alias("market")) for s in symbols
     ]
     write_parquet_atomic(pl.concat(frames), layout.root / "monitoring" / "changepoints.parquet")
+    # exploratory comparison of venues: one estimate on a bound, one missing
+    from ofs.venues.common import VENUE_SCHEMA
+
+    venue_rows = [
+        {
+            "symbol": s,
+            "market": m,
+            "venue": v,
+            "n_days": 30,
+            "h0": h,
+            "ci_low": h - 0.03,
+            "ci_high": h + 0.03,
+            "trades_per_day": 1e5,
+        }
+        for s in ("AAAUSDT", "BBBUSDT")
+        for m in ("spot", "um")
+        for v, h in (("binance", 0.65), ("bybit", 0.999 if s == "AAAUSDT" else 0.66), ("okx", 0.62))
+    ]
+    venue_rows[-1]["h0"] = float("nan")
+    write_parquet_atomic(
+        pl.DataFrame(venue_rows, schema=VENUE_SCHEMA),
+        layout.root / "venues" / "h0_2026-10-31.parquet",
+    )
     return project.data_dir
 
 

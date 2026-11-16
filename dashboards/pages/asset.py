@@ -30,7 +30,8 @@ def regime_monitor(symbol: str) -> None:
         (pl.col("ref_median") + pl.col("ref_sd")).alias("hi"),
     ).to_pandas()
     base = alt.Chart(data).encode(x=alt.X("block_start:T", title="block start"))
-    band = base.mark_area(opacity=0.15, color=INK_2).encode(y="lo:Q", y2="hi:Q")
+    # one band per market: without the grouping both markets' bands join into a zigzag
+    band = base.mark_area(opacity=0.15, color=INK_2).encode(y="lo:Q", y2="hi:Q", detail="market:N")
     line = base.mark_line(strokeWidth=1.5).encode(
         y=alt.Y("value:Q", title="Ĥ0 (block)", scale=alt.Scale(zero=False)),
         color=alt.Color("market:N", scale=alt.Scale(domain=["spot", "um"], range=[SPOT, PERP])),

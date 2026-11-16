@@ -11,7 +11,7 @@ import streamlit as st
 from ofs.config import Project
 from ofs.store import Store
 
-SPOT, PERP, INK, INK_2, BAND = "#2a78d6", "#eb6834", "#0b0b0b", "#52514e", "#f0efec"
+SPOT, PERP, INK, INK_2, BAND = "#2a78d6", "#eb6834", "#0b0b0b", "#52514e", "#e4ecf9"
 MARKET_SCALE = alt.Scale(domain=["spot", "um"], range=[SPOT, PERP])
 # forecast models: fixed domain, so that a model keeps its colour whatever is filtered;
 # hues distinct from the market colours above (benchmark in ink, simple models in greys)
@@ -39,10 +39,12 @@ FORECAST_ICON = {
 DECISION_ICON = {
     "compatible": "✅ compatible",
     "rejected": "❌ rejected",
-    "non_tranchee": "⚖️ non tranchée",
+    "non_tranchee": "⚖️ undecided",
     "descriptive": "ℹ️ descriptive",
     "insufficient_data": "⏳ insufficient data",
 }
+MARKET_NAMES = {"spot": "Spot", "um": "Perpetual"}
+VENUE_NAMES = {"binance": "Binance", "bybit": "Bybit", "okx": "OKX"}
 
 
 @st.cache_resource
