@@ -32,6 +32,17 @@ Forecasting the average of the next 22 days (mean QLIKE ratio, below 1: the mode
 
 <!-- results:end -->
 
+**In plain words.** The persistence of order flow is real and stable: `H0` is about 0.70
+on spot and 0.60 on perpetuals, the same in both years, and close to it on Bybit and OKX
+for perpetuals. But one number does not fix everything. The volume relation holds on
+perpetuals and fails on spot. The volatility relation fails on both markets: with `H0`
+below 3/4 it predicts a negative roughness, which no Hurst exponent can take. The impact
+relation misses by a wide margin, but its proxy depends on the estimator. Five of the six
+decisions of the development year were reproduced on a year that was not looked at before
+the configuration was frozen. Roughness helps forecasting at a month's horizon (losses
+27 % below HAR for volatility, 11-12 % for volume), but not by enough to pass the
+pre-registered bar.
+
 Read more: the [paper](paper/main.pdf) (PDF) and its [slides](paper/slides.pdf), [how to read these decisions](docs/design-faq.md), the [pre-registration](config/preregistration.md) and the [deviations](config/deviations.md) from it, and the same `H0` measured on [two other exchanges](docs/venues.md).
 
 **At a glance**
@@ -48,9 +59,13 @@ Read more: the [paper](paper/main.pdf) (PDF) and its [slides](paper/slides.pdf),
 * **Forecasting**: an exact rough-volatility predictor against HAR, Diebold–Mariano and
   model confidence set, out of sample; live daily forecasts with a scored track record.
 * **Production**: daily Docker pipeline (late and re-published files handled), read-only
-  API, dashboard, Healthchecks, change-point alarms on `H0`, a WebSocket L2 collector.
+  API, a seven-page [dashboard](#dashboard), Healthchecks, change-point alarms on `H0`, a
+  WebSocket L2 collector.
 * **Quality**: `mypy --strict`, ruff, 252 tests (92.4 % coverage), MkDocs site,
   15 architecture decision records, incident notes.
+* **Stack**: Python 3.12 and uv; Polars, DuckDB, NumPy, SciPy, Numba, statsmodels, arch;
+  pandera contracts; FastAPI; Streamlit and Altair; Docker, Caddy, supercronic; GitHub
+  Actions, MkDocs, LaTeX.
 
 
 ## Reproduce
@@ -149,6 +164,48 @@ perpetuals from the WebSocket diff-depth stream (Binance's sequence rules, resyn
 gap) and records 1-second books and every trade to hourly Parquet files, for a future
 propagator model ([docs/l2-collector.md](docs/l2-collector.md)).
 
+## Dashboard
+
+![Overview page of the dashboard: the decisions of the confirmation year](docs/img/dashboard.png)
+
+Seven read-only pages on the result tables:
+
+| Page | What it shows |
+|---|---|
+| Overview | the decisions of the confirmation year next to those of the development year, `H0` levels, forecasts at 22 days, venues and pipeline status |
+| Tests H1-H5 | every pair against the predicted line, the specification curve, all estimates |
+| Asset sheet | one pair: its four exponents with intervals, `H0` against the window Δ, the regime monitor |
+| Forecasting | F1-F3 pooled across pairs, per-pair losses, the model confidence set, one pair's forecasts, the live outlook |
+| Venues | `H0` of the same pairs on Binance, Bybit and OKX (exploratory) |
+| Pipeline health | downloads per day, data quality (O1), validation failures, latest events |
+| Simulation | bias, error and coverage of every estimator in the simulation study |
+
+With the result tables in `data/`: `uv run streamlit run dashboards/app.py`, or
+`docker compose up -d` for the whole stack behind Caddy (`https://dashboard.localhost`).
+The blue and white glass theme lives in [dashboards/theme.py](dashboards/theme.py) and
+[.streamlit/config.toml](.streamlit/config.toml); its animations stop for readers who ask
+for reduced motion.
+
+## Limitations
+
+* **One exchange, two years.** The tests use Binance only: one year to develop, one to
+  confirm. The comparison with Bybit and OKX covers 5 pairs over one month and only
+  describes.
+* **Trades, not the order book.** Order flow is the taker side of aggregated trades; the
+  study uses no book depth or queue data (the L2 collector records them for later work).
+* **H2 is limited by its estimator.** Daily volatility roughness sits on the lower bound of
+  its search range for most pairs, and no estimator stays within 0.02 of bias near
+  `H_σ = 0.1` in the simulation study. The direction of the H2 rejection is solid (the
+  prediction is negative); its size is poorly measured.
+* **H3 rests on a proxy.** The impact exponent comes from runs of same-sign trades, not
+  from metaorders, and its size depends on the estimator: H3 stays exploratory.
+* **A liquid universe.** 60 pairs selected by traded volume ([config/universe.yaml](config/universe.yaml)),
+  PAXG and WBTC left out by decision: the results say nothing about illiquid pairs.
+* **Statistical forecasts only.** QLIKE and squared error; no trading rule or P&L, by
+  design.
+* **Not deployed publicly yet.** The stack runs from the Docker image on the development
+  machine; the [cloud guide](docs/deploy-oracle.md) is ready but not yet executed.
+
 ## Status (2026-11-16)
 
 | Phase | State |
@@ -158,7 +215,7 @@ propagator model ([docs/l2-collector.md](docs/l2-collector.md)).
 | P2 Simulation and estimators | done: full study (82 cells, 200 replications of 365 days); estimator roles and calibration k fixed by the pre-registered rule (1.14, then 1.06 after the H0 re-run of D4); `H_σ` flagged as limited |
 | P3 Full universe, development | done: 60 pairs, 59 perpetuals (PAXG and WBTC left out by decision); 24-month backfill (2024-11-01 → 2026-10-31) with 86,694 of 86,870 pair-days reduced, 145 rejected by a control and none unexplained (O1 met); 5-year daily-volatility history; development estimates, tests and forecasts run twice, before and after deviations D3 and D4 |
 | P4 Confirmation and tests | done: configuration frozen on 2026-11-14 (tag `config-frozen`) before the first estimate on the confirmation sample; confirmation run finished on 2026-11-16, results at the top of this page |
-| P5 Production | Docker, compose, Caddy, cron, Healthchecks, R2 backups; the daily run replays late files and applies re-published ones; image built and tested locally (command line, API, dashboard); the CI job rehearsed in a Linux container; guide and set-up script for an Oracle Cloud VM ready, deployment pending |
+| P5 Production | Docker, compose, Caddy, cron, Healthchecks, R2 backups; the daily run replays late files and applies re-published ones; image built and tested locally (command line, API, dashboard); dashboard redesigned (seven pages, an overview first) and served with the API from the image on the development machine; the CI job rehearsed in a Linux container; guide and set-up script for an Oracle Cloud VM ready, deployment pending |
 | P6 Report | LaTeX paper and 10-slide deck built from the generated figures and tables (tests, levels, reading aids, controls, power); confirmation results in, conclusion written: [paper](paper/main.pdf), [slides](paper/slides.pdf) |
 | Forecasting (F) | models, evaluation, live forecasts, API, dashboard page and report table done and validated on simulated rough volatility; development and confirmation runs on real data done (results at the top of this page) |
 | Spec extensions | change-point monitor of `H0` and L2 collector done (collector checked live: 2,446 trades, 0 resyncs in 20 s); `H0` compared with two other exchanges on their public trades ([Bybit and OKX, exploratory](docs/venues.md)); kdb+/q not started (needs a licence) |
@@ -177,7 +234,7 @@ What the real data changed is recorded as decisions and incident notes:
 ```
 config/       universe, estimation grids, pre-registration (versioned, frozen by tags)
 src/ofs/      ingest, validate, reduce, simulate, estimators, inference, forecast, collect, report, api, cli
-dashboards/   Streamlit (tests, asset sheet, forecasting, pipeline health, simulation)
+dashboards/   Streamlit, seven pages (overview, tests, asset sheet, forecasting, venues, health, simulation)
 tests/        unit, property (Hypothesis), simulation (known-H recovery)
 paper/        LaTeX working paper and slides, figures and tables generated by `make report`
 scripts/      real-day benchmark, monthly arXiv watch, backups
