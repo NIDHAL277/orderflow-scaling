@@ -64,12 +64,13 @@ Healthchecks.io URL and the Cloudflare R2 keys of the weekly backup.
 ## 6. Data
 
 The daily run continues from the derived tables, the same as those of the weekly backup
-(`scripts/backup.sh`): about 8 GB, nearly all of it daily statistics. The dashboard also
-needs `quality`, `monitoring` and `venues` (data quality, regime monitor, comparison of
-venues): without them those sections stay empty. The raw Binance files are never copied:
-the pipeline downloads what it needs. From the laptop, in the repository (`ofs compact`
-first folds the closed months into one file per statistic, pair and month: tens of
-thousands of files to copy instead of about a million):
+(`scripts/backup.sh`): about 4 GB (3.8 GB in November 2026), mostly daily statistics, then
+the comparison of venues and the validation records. The dashboard also needs `quality`,
+`monitoring` and `venues` (data quality, regime monitor, comparison of venues): without
+them those sections stay empty. The raw Binance files are never copied: the pipeline
+downloads what it needs. From the laptop, in the repository (`ofs compact` first folds the
+closed months into one file per statistic, pair and month: about 280,000 files to copy
+instead of more than a million):
 
 ```bash
 uv run ofs compact
@@ -78,6 +79,21 @@ tar czf - daily_stats estimates tests forecast manifest validation simulation st
     quality monitoring venues \
   | ssh ubuntu@<public-address> "tar xzf - -C orderflow-scaling/data"
 ssh ubuntu@<public-address> "sudo chown -R 1000:1000 orderflow-scaling/data"
+```
+
+On a slow or unstable connection, a dropped stream starts the copy again from zero. Send it
+in parts instead, so that a dropped connection costs one part (copy again any part whose
+check fails):
+
+```bash
+tar cf - daily_stats estimates tests forecast manifest validation simulation status cache \
+    quality monitoring venues | split -b 256M -d -a 3 - ofs-data.tar.part-
+sha256sum ofs-data.tar.part-* > SHA256SUMS
+ssh ubuntu@<public-address> "mkdir -p ofs-parts"
+scp ofs-data.tar.part-* SHA256SUMS ubuntu@<public-address>:ofs-parts/
+ssh ubuntu@<public-address> "cd ofs-parts && sha256sum -c SHA256SUMS \
+  && cat ofs-data.tar.part-* | tar xf - -C ../orderflow-scaling/data \
+  && sudo chown -R 1000:1000 ../orderflow-scaling/data"
 ```
 
 ## 7. Start
