@@ -20,6 +20,8 @@ from ofs.paths import DataLayout
 from ofs.simulate.study import load_simulation_config, run_study
 
 APP = str(REPO / "dashboards" / "app.py")
+# seconds per script run: 60 s was exceeded on a hard disk busy with another job
+TIMEOUT = 300
 PAGES = (
     "views/overview.py",
     "views/tests.py",
@@ -137,7 +139,7 @@ def test_dashboard_pages_render(
     results_dir: Path, page: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("OFS_DATA_DIR", str(results_dir))
-    at = AppTest.from_file(APP, default_timeout=60)
+    at = AppTest.from_file(APP, default_timeout=TIMEOUT)
     at.run()
     assert not at.exception, at.exception
     at.switch_page(page).run()
@@ -150,7 +152,7 @@ def test_dashboard_pages_render(
 
 def test_dashboard_on_empty_store(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("OFS_DATA_DIR", str(tmp_path / "empty"))
-    at = AppTest.from_file(APP, default_timeout=60)
+    at = AppTest.from_file(APP, default_timeout=TIMEOUT)
     at.run()
     assert not at.exception
     assert any("No test results" in i.value for i in at.info)
@@ -166,7 +168,7 @@ def test_dashboard_on_a_results_snapshot(
     into = tmp_path / "snapshot"
     fetch_snapshot(str(archive), into)
     monkeypatch.setenv("OFS_DATA_DIR", str(into))
-    at = AppTest.from_file(APP, default_timeout=60)
+    at = AppTest.from_file(APP, default_timeout=TIMEOUT)
     at.run()
     assert not at.exception
     assert any("Results snapshot" in m.value for m in at.markdown)  # not a live pipeline
