@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import sys
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
@@ -27,6 +29,19 @@ PAGES = (
     "views/health.py",
     "views/simulation.py",
 )
+
+
+@pytest.fixture(autouse=True)
+def keep_main_module() -> Iterator[None]:
+    """Put back the interpreter's ``__main__`` after AppTest.
+
+    AppTest leaves ``sys.modules["__main__"]`` pointing at ``dashboards/app.py``. A process
+    pool started later in the same session (spawn) then re-runs that script in every worker,
+    which fails on ``import theme``: BrokenProcessPool in unrelated tests.
+    """
+    main = sys.modules["__main__"]
+    yield
+    sys.modules["__main__"] = main
 
 
 @pytest.fixture(scope="module")
