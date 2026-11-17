@@ -1,4 +1,4 @@
-# Design decisions in ten questions
+# Design decisions in twelve questions
 
 The choices a reviewer is most likely to question, each with the short answer, the
 evidence, and where it lives in the code.
@@ -128,3 +128,46 @@ smearing factor was too noisy at 22 days and changed rankings. Result in simulat
 * Operations: a shell filter deleted derived data, a closed lid killed the jobs, a restart
   stopped them again. Hence explicit-name cleanup only, resumable jobs, and a resume script
   (incident notes in `docs/incidents/`).
+* Small files: on the laptop's hard disk the daily cycle of 2026-11-15 took 11 hours, nearly
+  all of it opening about 955,000 files of a few kilobytes. Closed months are now folded into
+  one file per statistic, pair and month, read back and compared before the daily files go
+  (ADR 0016); the bundles read from both layouts were identical on real data.
+* The health check said "ok" with data 16 days old: it now reports "stale" once the last
+  verified day is more than 3 days old.
+
+## 11. What did the confirmation year show?
+
+Every choice was frozen on 2026-11-14 (tag `config-frozen`) before the confirmation year
+(2025-11-01 to 2026-10-31) was estimated.
+
+* **Volume (H1)**: compatible on perpetuals (gap +0.001, interval −0.012 to +0.011),
+  rejected on spot (−0.119).
+* **Volatility (H2)**: rejected on both markets. With `H0` below 3/4 the relation predicts a
+  negative `H_σ`, which no Hurst exponent can take; the daily estimates sit on the lower
+  bound of their range, so the intervals are lopsided.
+* **Impact (H3, exploratory)**: rejected on spot; undecided on perpetuals, where the gap is
+  large (−0.384) but `H0` spans only 0.54 to 0.62 across pairs, too narrow to identify a
+  slope. The control estimators disagree on the size of the gap, so H3 never counts alone.
+* **Level of `H0` (H4)**: 0.700 on spot and 0.597 on perpetuals (development: 0.705, 0.590).
+* **Forecasts (F1–F3)**: at 22 days the rough predictor's loss is 27 % below HAR's for
+  volatility, but the interval is wide and the Holm-corrected test does not decide. Using
+  the order-flow `H` instead of the measured one changes forecasts by less than 1.5 %:
+  equivalent at 1 and 5 days.
+
+Five of the six primary decisions of the development year were reproduced. The one change,
+H3 on perpetuals (rejected, then undecided), comes from the narrow cross-section, not from a
+change of method. Numbers: the README (generated from the result tables) and `paper/main.pdf`.
+
+## 12. What are the limits, and what would come next?
+
+* One main venue. Bybit and OKX are an exploratory check on five pairs over one month: on
+  perpetuals they agree with Binance within 0.03 on average (`docs/venues.md`).
+* `H_σ` near zero is where the estimators are least reliable (Whittle's bias 0.030 in the
+  simulation study). H2's rejection rests on the sign of the predicted exponent more than on
+  the precision of the estimate.
+* `δ` uses a proxy of price impact built from trades; there is no order-book history (the
+  L2 collector starts one).
+* One year per sample, and the live track record of the forecasts has only just started.
+* Next: run the daily pipeline on a server to build that live record, extend the venue
+  comparison, and re-run the same frozen protocol on the following year as a second
+  confirmation.

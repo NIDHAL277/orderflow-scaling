@@ -114,4 +114,4 @@ pre-registered acceptance rule decides.
   error 0.05 against 0.12).
 * Three decisions of the development tests changed, in both directions: H1 on USD-M from
   undecided to compatible, H3 on both markets from undecided to rejected
-  ([config/deviations.md](../../config/deviations.md), D4).
+  (`config/deviations.md`, D4).
