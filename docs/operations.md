@@ -56,10 +56,20 @@ two commands. It found the hang described in
    listed in the status (`changepoint_alarms`) without failing the run.
 4. Healthchecks.io ping on success, fail ping otherwise (and at 12:xx UTC for files still
    absent, which become "missing").
-5. Sunday 04:00: backup of `daily_stats`, `estimates`, `tests` to R2.
+5. Sunday 04:00: backup of every derived table to R2 (`scripts/backup.sh`: daily
+   statistics, estimates, tests, forecasts, manifest, validation, simulation, status, data
+   quality, regime monitor, comparison of venues).
 
 Exit codes: 0 done (later runs of the same day are no-ops), 75 waiting for Binance or
 another command writing the data, 1 failure.
+
+Health (`ofs status`, `GET /health`, the dashboard) has three states. `degraded`: the last
+run reported a problem (blocked days, files still missing at 12:00 UTC, disk above 80 %,
+live forecasts failed); it comes first. `stale`: no problem reported, but the last verified
+day is more than 3 days old; Binance publishes a day later and the run retries until
+12:30 UTC, so one or two days is normal, and older means that a run was missed or that the
+machine is stopped. `ok` otherwise. The age of the last verified day is always reported
+(`data_lag_days`).
 
 One writer at a time: every command that writes the shared data (`ingest`, `backfill`,
 `reduce`, `validate`, `recheck`, `history`, `estimate`, `test`, `daily`, `clean-temp`)
@@ -95,6 +105,23 @@ window ends `reduced`, `blocked` (validation), or without a file: `not_listed`, 
 or `suspended` are explained; `unexplained`, `not_reduced` and `not_attempted` are not, and
 O1 requires none of them.
 
+## Results snapshot
+
+```bash
+ofs snapshot export                 # -> results-snapshot.zip (about 120 MB)
+ofs snapshot fetch                  # latest release -> snapshot/ (or --source URL-or-file)
+OFS_DATA_DIR=snapshot uv run streamlit run dashboards/app.py
+```
+
+The snapshot holds the tables the dashboard and the API read: tests, estimates without the
+bootstrap replicates, forecasts, simulation summaries, data quality, regime monitor,
+comparison of venues, manifest and status, with a manifest of sizes and SHA-256 checksums
+(`snapshot.json`). It holds no raw Binance file and no daily statistics. Attached to a
+release, it lets anyone browse the results without running the pipeline. `fetch` refuses
+unsafe paths, unlisted or missing files and checksum mismatches before it writes anything,
+and never overwrites a pipeline data directory. The dashboard recognises a snapshot and
+says so, instead of judging a pipeline that does not run there.
+
 ## Incidents
 
 | Incident | Detection | Action |
@@ -103,6 +130,7 @@ O1 requires none of them.
 | Wrong checksum | M1 | new download; two failures alert |
 | Binance format change | M2 schema failure | alert, fix the loader, add a regression test, replay |
 | Disk full | alert at 80 % | purge `data/raw/`, check deletion after reduction |
+| No run for days (machine stopped, cron down) | health `stale`, `data_lag_days` above 3; no Healthchecks ping | restart the stack; `ofs backfill --from D --to D` for days older than the six the daily run replays, then `ofs daily` |
 | Interrupted run (kill, reboot) | `*.tmp-*` / `*.part` files | `ofs clean-temp --dry-run`, then `ofs clean-temp`; rerun the command: done days are skipped |
 | Live forecasts failed | status `live_forecasts: false`, fail ping | read the `live_forecasts_failed` event in the log; the next daily run retries; a missing day of forecasts stays missing (forecasts are never made after the fact) |
 | Regression after deployment | tests or dashboard | `OFS_IMAGE_TAG=<previous> docker compose up -d` |
