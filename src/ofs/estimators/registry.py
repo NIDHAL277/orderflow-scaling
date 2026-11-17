@@ -221,6 +221,8 @@ STATS_KINDS: tuple[str, ...] = (
     "impact_agg",
     "day_summary",
 )
+# what the principal H0 estimator reads (the flow variances), with the day summary
+H0_KINDS: tuple[str, ...] = ("flow_var_vc", "flow_var", "day_summary")
 
 
 HISTORY_TABLE = "rv_history"

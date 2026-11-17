@@ -24,6 +24,7 @@ from ofs.ingest.loader import read_aggtrades, read_klines
 from ofs.ingest.manifest import read_manifest, status_of
 from ofs.io import write_parquet_atomic
 from ofs.logs import configure_logging, logging_config, stage_event
+from ofs.packs import drop_day
 from ofs.paths import DataLayout
 from ofs.reduce.pipeline import MIN_PROFILE_DAYS, MissingRawFileError, Reducer
 from ofs.reduce.seasonality import window_days
@@ -276,7 +277,7 @@ def invalidate_day(
     """Delete the outputs derived from one pair-day.
 
     With ``pass1``, the windows, pass-1 statistics and validation report go too: the raw
-    file has to be read again.
+    file has to be read again. A day already in a monthly pack is removed from it.
     """
     tables = [layout.stats_table(k) for k in (*PASS2_KINDS, *PASS2_VC_KINDS)]
     if pass1:
@@ -287,6 +288,7 @@ def invalidate_day(
         for path in layout.day_files(table, asset, market, day):
             path.unlink(missing_ok=True)
             removed += 1
+        removed += drop_day(layout, table, asset, market, day)
     report = layout.validation_file(asset, market, day)
     if pass1 and report.exists():
         report.unlink()

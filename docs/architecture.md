@@ -53,6 +53,7 @@ data/
   cache/validation.parquet                     all reports; only new day files are read again
   bins_10s|bins_1s/symbol=/market=/month=/{day}__v{version}.parquet
   daily_stats/{kind}/symbol=/market=/month=/{day}__v{version}.parquet
+  daily_stats/{kind}/symbol=/market=/month=/{YYYY-MM}__pack.parquet   closed months (ADR 0016)
   estimates/estimates_{sample}.parquet         + bootstrap replicates and day indices
   tests/tests_{sample}.parquet                 + residuals, controls, robustness
   forecast/forecasts_{sample}.parquet          + evaluation_{sample}, tests_{sample} (F1-F3)

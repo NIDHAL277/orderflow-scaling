@@ -3,7 +3,8 @@
 Every table is Parquet, partitioned by pair and month (spec §6.5). Per-day
 outputs carry their stage version in the file name, ``{day}__v{version}.parquet``:
 re-running a stage with the same version is a no-op, bumping the version
-recomputes it (spec §7, idempotence).
+recomputes it (spec §7, idempotence). The daily statistics of closed months are
+folded into one pack per month, ``{YYYY-MM}__pack.parquet`` (``ofs.packs``).
 """
 
 from __future__ import annotations
@@ -82,6 +83,10 @@ class DataLayout:
         if not folder.exists():
             return []
         return sorted(folder.glob(f"{day.isoformat()}__v*.parquet"))
+
+    def pack_file(self, table: str, asset: str, market: Market, day: dt.date) -> Path:
+        """Monthly pack of ``table`` for the month of ``day`` (``ofs.packs``)."""
+        return self.partition_dir(table, asset, market, day) / f"{day:%Y-%m}__pack.parquet"
 
     def table_dir(self, table: str) -> Path:
         """Root folder of ``table``."""

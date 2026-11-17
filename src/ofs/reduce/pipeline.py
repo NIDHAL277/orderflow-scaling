@@ -13,6 +13,7 @@ from ofs.config import Market, Project
 from ofs.ingest.loader import read_aggtrades, read_klines
 from ofs.io import read_parquets, write_parquet_atomic
 from ofs.logs import stage_event
+from ofs.packs import day_done
 from ofs.paths import DataLayout
 from ofs.reduce import stats as st
 from ofs.reduce.bins import Bins, TradeArrays, bins_frame, bins_from_frame, day_rng, make_bins
@@ -75,7 +76,7 @@ class Reducer:
         return path
 
     def _exists(self, table: str, asset: str, market: Market, day: dt.date, version: str) -> bool:
-        return self.layout.day_file(table, asset, market, day, version).exists()
+        return day_done(self.layout, table, asset, market, day, version)
 
     def read_bins(self, asset: str, market: Market, day: dt.date, resolution_s: int) -> Bins | None:
         """Read the stored windows of a day at ``resolution_s`` (None if absent)."""

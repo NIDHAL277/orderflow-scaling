@@ -31,6 +31,7 @@ import numpy as np
 import polars as pl
 
 from ofs.config import Market, Project
+from ofs.estimators.registry import H0_KINDS
 from ofs.estimators.run import load_bundle
 from ofs.logs import get_logger
 from ofs.paths import DataLayout
@@ -38,7 +39,6 @@ from ofs.reduce.bins import day_start_us
 from ofs.reduce.pipeline import Reducer
 
 USER_AGENT = "orderflow-scaling (research; public archive)"
-H0_KINDS = ("flow_var_vc", "flow_var", "day_summary")
 REFERENCE = "binance"
 LABELS = {"binance": "Binance", "bybit": "Bybit", "okx": "OKX"}
 VENUE_SCHEMA = {

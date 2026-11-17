@@ -849,6 +849,45 @@ def clean_temp(
 
 
 @app.command()
+@writes_data
+def compact(
+    ctx: typer.Context,
+    before: Annotated[
+        dt.datetime | None,
+        typer.Option(
+            formats=["%Y-%m-%d"],
+            help="Pack the months that start before this day (default: the months that the "
+            "daily run and the weekly recheck no longer change)",
+        ),
+    ] = None,
+    jobs: Annotated[int, typer.Option(help="Partitions read in parallel")] = 4,
+) -> None:
+    """Fold the daily statistics of closed months into one file per statistic, pair and month."""
+    from ofs.packs import compact as compact_months
+    from ofs.packs import first_open_month
+    from ofs.paths import DataLayout
+
+    project = _project(ctx)
+    d = project.pipeline.daily
+    limit = (
+        before.date()
+        if before
+        else first_open_month(dt.datetime.now(dt.UTC).date(), d.catchup_days, d.recheck_days)
+    )
+    summary = compact_months(DataLayout(project.data_dir), before=limit, jobs=jobs)
+    out = {
+        "before": limit.isoformat(),
+        "partitions": summary.partitions,
+        "packs": summary.packs,
+        "files": summary.files,
+        "errors": summary.errors[:20],
+    }
+    typer.echo(json.dumps(out, indent=1))
+    if summary.errors:
+        raise typer.Exit(code=1)
+
+
+@app.command()
 def status(ctx: typer.Context) -> None:
     """Health of the data store (manifest counts, last day, validation failures, disk)."""
     from ofs.store import Store

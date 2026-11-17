@@ -96,7 +96,9 @@ def test_block_estimates_and_monitoring_find_the_shift() -> None:
 def test_run_changepoints_and_api(project: Project, monkeypatch: pytest.MonkeyPatch) -> None:
     days = date_range(dt.date(2024, 11, 1), dt.date(2026, 6, 30))
 
-    def fake_bundle(layout: Any, asset: str, market: str, wanted: Any) -> StatsBundle:
+    def fake_bundle(
+        layout: Any, asset: str, market: str, wanted: Any, kinds: Any = None
+    ) -> StatsBundle:
         return synthetic_bundle(days, dt.date(2026, 3, 1), seed=len(asset) + len(market))
 
     monkeypatch.setattr("ofs.estimators.run.load_bundle", fake_bundle)
@@ -109,3 +111,27 @@ def test_run_changepoints_and_api(project: Project, monkeypatch: pytest.MonkeyPa
     assert len(rows) == out.height
     flagged = client.get("/monitor/changepoints", params={"alarms_only": True}).json()
     assert flagged and all(r["cusum_alarm"] or r["sr_alarm"] for r in flagged)
+
+
+class Recorder(dict[str, pl.DataFrame]):
+    """A statistics bundle that records which tables an estimator asks for."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.asked: set[str] = set()
+
+    def get(self, key: str, default: Any = None) -> Any:  # type: ignore[override]
+        self.asked.add(key)
+        return super().get(key, default)
+
+    def __getitem__(self, key: str) -> pl.DataFrame:
+        self.asked.add(key)
+        return super().__getitem__(key)
+
+
+def test_the_monitor_loads_only_what_the_principal_h0_reads(project: Project) -> None:
+    from ofs.estimators.registry import H0_KINDS
+
+    bundle = Recorder()
+    cp.principal_h0(project).features(bundle, date_range(dt.date(2025, 1, 1), dt.date(2025, 1, 9)))
+    assert bundle.asked and bundle.asked <= set(H0_KINDS)

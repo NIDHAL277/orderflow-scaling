@@ -35,12 +35,17 @@ def replace_with_retry(tmp: Path, path: Path, attempts: int = 40) -> None:
             time.sleep(0.05 * (i + 1))
 
 
-def write_parquet_atomic(df: pl.DataFrame, path: Path) -> Path:
-    """Write ``df`` to ``path`` through a temporary file and an atomic rename."""
+def write_parquet_atomic(
+    df: pl.DataFrame, path: Path, metadata: dict[str, str] | None = None
+) -> Path:
+    """Write ``df`` to ``path`` through a temporary file and an atomic rename.
+
+    ``metadata``: key-value pairs stored in the Parquet footer (``pl.read_parquet_metadata``).
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = _tmp_path(path)
     try:
-        df.write_parquet(tmp, compression="zstd", statistics=True)
+        df.write_parquet(tmp, compression="zstd", statistics=True, metadata=metadata)
         replace_with_retry(tmp, path)
     finally:
         tmp.unlink(missing_ok=True)

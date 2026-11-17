@@ -50,6 +50,7 @@ nav:
       - adr/0013-forecasting-extension.md
       - adr/0014-l2-collector.md
       - adr/0015-volume-centred-order-flow.md
+      - adr/0016-monthly-packs-of-daily-statistics.md
   - Incidents:
       - incidents/README.md
       - incidents/2026-11-09-manifest-late-null-column.md

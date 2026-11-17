@@ -30,8 +30,9 @@ from ofs.config import Market, Project, Sample, model_hash
 from ofs.estimators.base import NAN_ESTIMATE, Estimate, Estimator, Features, FloatArray
 from ofs.estimators.registry import HISTORY_TABLE, STATS_KINDS, build_registry, history_registry
 from ofs.inference.bootstrap import confidence_interval, synchronized_weights
-from ofs.io import read_parquets, write_parquet_atomic
+from ofs.io import write_parquet_atomic
 from ofs.logs import stage_event
+from ofs.packs import read_month
 from ofs.paths import DataLayout
 from ofs.schemas import BOOTSTRAP, ESTIMATES
 from ofs.utils import as_float, process_pool
@@ -103,20 +104,23 @@ def load_bundle(
     days: Sequence[dt.date],
     kinds: Sequence[str] = STATS_KINDS,
 ) -> dict[str, pl.DataFrame]:
-    """Daily statistics of one (pair, market) restricted to ``days``."""
+    """Daily statistics of one (pair, market) restricted to ``days``.
+
+    Per-day files and monthly packs (``ofs.packs``) give the same frames.
+    """
     lo, hi = min(days), max(days)
     wanted = {d.isoformat() for d in days}
     bundle: dict[str, pl.DataFrame] = {}
     for kind in kinds:
         table = layout.stats_table(kind)
-        files: list[Path] = []
+        frames: list[pl.DataFrame] = []
         month = dt.date(lo.year, lo.month, 1)
         while month <= hi:
             folder = layout.partition_dir(table, asset, market, month)
             if folder.exists():
-                files += [f for f in folder.glob("*.parquet") if f.name[:10] in wanted]
+                frames += read_month(folder, wanted)
             month = (month.replace(day=28) + dt.timedelta(days=4)).replace(day=1)
-        bundle[kind] = read_parquets(sorted(files))
+        bundle[kind] = pl.concat(frames, how="diagonal_relaxed") if frames else pl.DataFrame()
     return bundle
 
 

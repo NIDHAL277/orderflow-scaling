@@ -45,7 +45,9 @@ two commands. It found the hang described in
 1. 02:30 UTC: download yesterday's files; if absent, exit code 75 and retry every hour.
    Each run also replays the six days before (late files, failed downloads).
 2. Validation, reduction, update of the daily statistics. After Sunday's data, the files
-   Binance re-published over the last 30 days are applied (`ofs recheck`).
+   Binance re-published over the last 30 days are applied (`ofs recheck`), then the months
+   that no run can change any more are folded into one file per statistic, pair and month
+   (see "Monthly packs" below).
 3. Rolling 24-month estimates (confirmatory tests stay frozen on the frozen sample), then
    the live forecasts of every pair for the next 1, 5 and 22 days
    (`data/forecast/live/{day}.parquet`) and the live track record of past forecasts whose
@@ -104,6 +106,18 @@ and `data/quality/quality.parquet` (days per state and coverage per pair). Every
 window ends `reduced`, `blocked` (validation), or without a file: `not_listed`, `delisted`
 or `suspended` are explained; `unexplained`, `not_reduced` and `not_attempted` are not, and
 O1 requires none of them.
+
+## Monthly packs
+
+The reduction writes one small file per statistic, pair and day; two years make about a
+million files, which a hard disk opens slowly and a backup uploads one by one. Once a month
+is out of reach of the daily replay and of the weekly recheck (35 days after its end), its
+per-day files are folded into one file per statistic, pair and month,
+`{YYYY-MM}__pack.parquet` ([ADR 0016](adr/0016-monthly-packs-of-daily-statistics.md)).
+The weekly run does it for the months that just closed; `ofs compact` does it for every
+closed month (resumable, holds the pipeline lock). Readers see the same rows either way; a
+day recomputed later (manual backfill, version bump) gets a per-day file that takes
+precedence until the next compaction folds it in.
 
 ## Results snapshot
 

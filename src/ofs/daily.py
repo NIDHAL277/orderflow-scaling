@@ -4,7 +4,9 @@
    also replays the previous days of a short window (``catchup_days``): a file published
    late or a failed download is picked up the next day (spec §11.4);
 2. validation, reduction, update of the daily statistics; once a week, the files Binance
-   re-published over the last ``recheck_days`` are applied (spec §6.4);
+   re-published over the last ``recheck_days`` are applied (spec §6.4), then the daily
+   statistics of the months no run can change any more are folded into one file per
+   statistic, pair and month (``ofs.packs``);
 3. rolling 24-month estimates (the confirmatory tests stay frozen), then the live
    forecasts of daily volatility and volume for the next 1, 5 and 22 days and the live
    track record of past forecasts (``ofs.forecast.live``); once a week, the
@@ -36,6 +38,7 @@ from ofs.store import Store
 EXIT_OK = 0
 EXIT_RETRY = 75
 EXIT_FAIL = 1
+PACK_LOOKBACK_MONTHS = 4  # the weekly run packs the last closed months; `ofs compact` all
 
 
 def rolling_days(day: dt.date, months: int) -> list[dt.date]:
@@ -68,6 +71,27 @@ def finalize_pending(layout: DataLayout, day: dt.date) -> int:
     ]
     upsert(layout.manifest_file, records)
     return len(records)
+
+
+def pack_closed_months(project: Project, layout: DataLayout, day: dt.date) -> None:
+    """Fold the daily statistics of the months no run can change any more (weekly).
+
+    A failure is logged and never fails the run: per-day files read the same as packs.
+    """
+    from ofs.packs import compact, first_open_month
+
+    d = project.pipeline.daily
+    before = first_open_month(day, d.catchup_days, d.recheck_days)
+    after = before
+    for _ in range(PACK_LOOKBACK_MONTHS):
+        after = (after - dt.timedelta(days=1)).replace(day=1)
+    log = get_logger(stage="daily", day=day.isoformat())
+    try:
+        result = compact(layout, before=before, after=after)
+        if result.errors:
+            log.warning("compaction_errors", errors=result.errors[:5])
+    except Exception as exc:
+        log.error("compaction_failed", error=repr(exc)[:500])
 
 
 def run_daily(
@@ -109,6 +133,7 @@ def run_daily(
         if day.weekday() == pcfg.daily.recheck_weekday:
             since = day - dt.timedelta(days=pcfg.daily.recheck_days - 1)
             summary.merge(apply_corrections(project, markets, since, day))
+            pack_closed_months(project, layout, day)
         rolling_ok = None
         if estimate:
             try:

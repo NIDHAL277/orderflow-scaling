@@ -238,6 +238,7 @@ def run_changepoints(
     estimator: Estimator | None = None,
 ) -> pl.DataFrame:
     """Block H0 and both detectors for every pair, reference = development sample."""
+    from ofs.estimators.registry import H0_KINDS, STATS_KINDS
     from ofs.estimators.run import load_bundle
     from ofs.io import write_parquet_atomic
     from ofs.paths import DataLayout
@@ -246,13 +247,16 @@ def run_changepoints(
     reference = project.estimation.split.development
     layout = DataLayout(project.data_dir)
     est = estimator or principal_h0(project)
+    # the principal H0 reads the flow variances only: 3 of the 11 statistics (an explicit
+    # estimator may read anything)
+    kinds = H0_KINDS if estimator is None else STATS_KINDS
     days = date_range(reference.start, end)
     frames: list[pl.DataFrame] = []
     for market in markets:
         for pair in project.universe.assets(market):
             if symbols is not None and pair.symbol not in symbols:
                 continue
-            bundle = load_bundle(layout, pair.symbol, market, days)
+            bundle = load_bundle(layout, pair.symbol, market, days, kinds)
             blocks = block_estimates(est, bundle, days, cp.block_days, cp.min_days)
             out = monitor(blocks, reference, k=cp.k, delta=cp.delta, arl0=cp.arl0_blocks)
             if out.height:
