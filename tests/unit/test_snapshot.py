@@ -19,9 +19,13 @@ RESULTS = (
     "forecast/live/forecasts_live.parquet",
     "venues/h0_2026-10-31.parquet",
     "quality/quality.parquet",
+    "simulation/summary_full.parquet",
 )
 WORKING = (  # the pipeline's own data: never exported
     "estimates/bootstrap_confirmation.parquet",
+    "venues/bybit/daily_stats/symbol=AAAUSDT/x.parquet",  # another venue's statistics
+    "simulation/cells_full_70b071eb/cell.parquet",  # checkpoints of the simulation study
+    "cache/validation.parquet",  # of no use without the validation reports
     "raw/spot/aggTrades/AAAUSDT/AAAUSDT-aggTrades-2026-11-01.parquet",
     "validation/spot/AAAUSDT/2026-11-01.parquet",
     "daily_stats/symbol=AAAUSDT/market=spot/month=2026-11/x.parquet",

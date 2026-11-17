@@ -122,10 +122,12 @@ def health_page() -> None:
             hide_index=True,
             width="stretch",
         )
-    details = st.toggle(
-        "Validation details",
-        help="Reads every validation report (about 86,000 files for two years): slow at first.",
-    )
+    details = False
+    if not snap:  # a snapshot carries the number of blocked days, not the 86,000 reports
+        details = st.toggle(
+            "Validation details",
+            help="Reads every validation report (about 86,000 files for two years): slow at first.",
+        )
     val = store().validation() if details else pl.DataFrame()
     if val.height:
         failed = val.filter(pl.col("blocking") & ~pl.col("passed"))

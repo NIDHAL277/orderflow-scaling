@@ -42,15 +42,17 @@ LICENCE = (
     "research, not affiliated with Binance, not investment advice."
 )
 # What the dashboard and the API read, relative to the data directory. Left out: raw files,
-# daily statistics and windows (the pipeline's working data), the bootstrap replicates,
-# the validation reports (about 86,000 files), logs, locks and temporary files.
-INCLUDE_DIRS = ("tests", "forecast", "simulation", "quality", "monitoring", "venues")
-INCLUDE_GLOBS = ("estimates/estimates_*.parquet",)
-INCLUDE_FILES = (
-    "manifest/manifest.parquet",
-    "status/pipeline_status.json",
-    "cache/validation.parquet",
+# daily statistics and windows (the pipeline's working data, and those of the other venues
+# under venues/<name>/: 800 MB for one month of five pairs), the bootstrap replicates, the
+# cell checkpoints of the simulation study, the validation reports (about 86,000 files; their
+# cache is of no use without them), logs, locks and temporary files.
+INCLUDE_DIRS = ("tests", "forecast", "quality", "monitoring")
+INCLUDE_GLOBS = (
+    "estimates/estimates_*.parquet",
+    "simulation/*.parquet",
+    "venues/h0_*.parquet",
 )
+INCLUDE_FILES = ("manifest/manifest.parquet", "status/pipeline_status.json")
 SUFFIXES = {".parquet", ".json"}
 CHUNK = 1 << 20
 
