@@ -19,13 +19,13 @@ from ofs.simulate.study import load_simulation_config, run_study
 
 APP = str(REPO / "dashboards" / "app.py")
 PAGES = (
-    "pages/overview.py",
-    "pages/tests.py",
-    "pages/asset.py",
-    "pages/forecast.py",
-    "pages/venues.py",
-    "pages/health.py",
-    "pages/simulation.py",
+    "views/overview.py",
+    "views/tests.py",
+    "views/asset.py",
+    "views/forecast.py",
+    "views/venues.py",
+    "views/health.py",
+    "views/simulation.py",
 )
 
 
@@ -128,7 +128,7 @@ def test_dashboard_pages_render(
     at.switch_page(page).run()
     assert not at.exception, at.exception
     assert at.title[0].value  # every page has a title
-    if page == "pages/health.py":  # the validation reports are read only on demand
+    if page == "views/health.py":  # the validation reports are read only on demand
         at.toggle[0].set_value(True).run()
         assert not at.exception, at.exception
 
@@ -158,5 +158,5 @@ def test_dashboard_on_a_results_snapshot(
     for page in PAGES:
         at.switch_page(page).run()
         assert not at.exception, (page, at.exception)
-    at.switch_page("pages/health.py").run()
+    at.switch_page("views/health.py").run()
     assert any("snapshot" in i.value for i in at.info)

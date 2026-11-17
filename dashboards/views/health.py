@@ -7,13 +7,40 @@ import json
 import altair as alt
 import polars as pl
 import streamlit as st
-from common import store
+from common import MARKET_HELP, how_to_read, store
+
+from ofs.ingest.manifest import explain_missing
 
 STATUS = {"ok": "🟢 ok", "stale": "🟡 behind", "degraded": "🟠 degraded"}
+QUALITY_COLUMNS = {
+    "symbol": "Pair",
+    "market": st.column_config.TextColumn("Market", help=MARKET_HELP),
+    "days": "Days",
+    "reduced": st.column_config.NumberColumn("Usable", help="validated and reduced"),
+    "blocked": st.column_config.NumberColumn("Blocked", help="stopped by a validation check"),
+    "not_listed": "Not yet listed",
+    "suspended": "Suspended",
+    "unexplained": "Unexplained",
+    "not_reduced": "Not reduced",
+    "not_attempted": "Not attempted",
+    "coverage": st.column_config.NumberColumn(
+        "Coverage", format="percent", help="usable days over the days the pair was listed"
+    ),
+}
 
 
 def health_page() -> None:
     st.title("Pipeline health")
+    how_to_read(
+        "**Status**: *ok* when the last daily run went through; *behind* when the newest "
+        "verified day is more than 3 days old (a run was missed or the machine is off); "
+        "*degraded* when the last run reported a problem, named under the tiles.",
+        "**Downloads per day**: one bar per day, coloured by what happened to each pair's "
+        "file: downloaded (ok), not listed yet, delisted, suspended, or missing.",
+        "**Data quality (O1)**: every pair-day of the study window ends usable, blocked by a "
+        "validation check, or without a file for a known reason. O1, the data objective, "
+        "requires no day left without an explanation.",
+    )
     h = store().health()
     snap = store().snapshot_info()
     if snap:
@@ -84,13 +111,32 @@ def health_page() -> None:
             )
         )
         st.altair_chart(chart, width="stretch")
-        gaps = man.filter(pl.col("status").is_in(["missing", "error", "checksum_failed"]))
-        st.markdown(f"**Unexplained gaps:** {gaps.height}")
+        gaps = explain_missing(man).filter(
+            pl.col("status").is_in(["missing", "error", "checksum_failed"])
+        )
+        trades = gaps.filter(pl.col("kind") == "aggTrades").height
+        st.markdown(
+            f"**Files missing without explanation:** {trades} trade files · "
+            f"{gaps.height - trades} other files"
+        )
+        st.caption(
+            "Trade files feed every test; the other files (1-minute price bars) only feed the "
+            "long volatility history of the forecasts. A file absent before a pair was listed "
+            "or after it was delisted is explained, so not counted."
+        )
         if gaps.height:
             st.dataframe(
                 gaps.select("symbol", "market", "kind", "date", "status", "error"),
                 hide_index=True,
                 width="stretch",
+                column_config={
+                    "symbol": "Pair",
+                    "market": "Market",
+                    "kind": "File",
+                    "date": st.column_config.DateColumn("Day"),
+                    "status": "Status",
+                    "error": "Error",
+                },
             )
     quality = store().quality()
     if quality.height:
@@ -103,6 +149,8 @@ def health_page() -> None:
         c[1].metric(
             "Explained gaps",
             f"{int(quality.select(['not_listed', 'delisted', 'suspended']).sum_horizontal().sum()):,}",
+            help="pair-days without a trade file for a known reason: not yet listed, "
+            "delisted or suspended",
         )
         c[2].metric("Unexplained or pending", f"{problems:,}", help="O1 requires 0")
         st.dataframe(
@@ -121,6 +169,7 @@ def health_page() -> None:
             ),
             hide_index=True,
             width="stretch",
+            column_config=QUALITY_COLUMNS,
         )
     details = False
     if not snap:  # a snapshot carries the number of blocked days, not the 86,000 reports

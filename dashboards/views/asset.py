@@ -7,7 +7,29 @@ import json
 import altair as alt
 import polars as pl
 import streamlit as st
-from common import INK_2, PERP, SPOT, sample_picker, store
+from common import INK_2, MARKET_HELP, PERP, SPOT, how_to_read, sample_picker, store
+
+EXPONENT_HELP = {
+    "H0": "memory of the order flow: 0.5 means none; above 0.5, buying or selling pressure "
+    "persists",
+    "Hvol": "roughness of traded volume (theory: H0 − 1/2)",
+    "Hsigma": "roughness of volatility, near 0 = very rough (theory: 2 H0 − 3/2)",
+    "delta": "how price impact grows with order size, 0.5 = square-root law (theory: "
+    "2 − 2 H0); a proxy built from trades",
+}
+COLUMNS = {
+    "market": st.column_config.TextColumn("Market", help=MARKET_HELP),
+    "exponent": "Exponent",
+    "estimator": "Method",
+    "variant": "Data variant",
+    "role": st.column_config.TextColumn(
+        "Role", help="primary: the estimator registered in advance; control: a cross-check"
+    ),
+    "value": st.column_config.NumberColumn("Estimate", format="%.3f"),
+    "ci_low": st.column_config.NumberColumn("95 % low", format="%.3f"),
+    "ci_high": st.column_config.NumberColumn("95 % high", format="%.3f"),
+    "n_days": "Days",
+}
 
 
 def regime_monitor(symbol: str) -> None:
@@ -56,6 +78,19 @@ def regime_monitor(symbol: str) -> None:
 
 def asset_page() -> None:
     st.title("Asset sheet")
+    how_to_read(
+        "One pair at a time: its four exponents with their 95 % intervals, on the sample "
+        "chosen in the sidebar. **H0**: memory of the order flow (0.5 = none). **Hvol**: "
+        "roughness of traded volume. **Hsigma**: roughness of volatility (near 0 = very "
+        "rough). **delta**: how price impact grows with order size (a proxy from trades).",
+        "The table lists every estimate behind the tiles: *primary* is the estimator "
+        "registered in advance, *control* an independent cross-check.",
+        "**H0 against the window Δ**: the simple model drifts as the window grows; the mixed "
+        "model, used for the tests, should stay flat.",
+        "**Regime monitor**: H0 re-estimated on each 14-day block after the development "
+        "year. The band is the development range, a diamond an alarm (a lasting shift); a "
+        "few alarms are expected by chance.",
+    )
     sample = sample_picker()
     est = store().estimates(sample)  # type: ignore[arg-type]
     if est.height == 0:
@@ -77,7 +112,8 @@ def asset_page() -> None:
             col.metric(
                 f"{exponent} (spot)",
                 f"{row['value'][0]:.3f}",
-                help=f"95 % CI [{row['ci_low'][0]:.3f}, {row['ci_high'][0]:.3f}] - {row['estimator'][0]}",
+                help=f"{EXPONENT_HELP[exponent]}. 95 % interval [{row['ci_low'][0]:.3f}, "
+                f"{row['ci_high'][0]:.3f}], method {row['estimator'][0]}",
             )
         else:
             col.metric(f"{exponent} (spot)", "–")
@@ -95,6 +131,7 @@ def asset_page() -> None:
         ),
         hide_index=True,
         width="stretch",
+        column_config=COLUMNS,
     )
     win = d.filter(
         (pl.col("exponent") == "H0")

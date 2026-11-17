@@ -5,13 +5,83 @@ from __future__ import annotations
 import altair as alt
 import polars as pl
 import streamlit as st
-from common import BAND, DECISION_ICON, INK, MARKET_SCALE, sample_picker, store
+from common import (
+    BAND,
+    DECISION_ICON,
+    INK,
+    MARKET_HELP,
+    MARKET_SCALE,
+    how_to_read,
+    sample_picker,
+    store,
+)
 
 from ofs.inference.hypotheses import RELATIONS
+
+COLUMNS = {
+    "hypothesis": st.column_config.TextColumn(
+        "Test",
+        help="H1 volume, H2 volatility, H3 price impact (exploratory), H4 level of H0, "
+        "H5 spot against perpetual",
+    ),
+    "relation": "Relation tested",
+    "status": st.column_config.TextColumn(
+        "Kind",
+        help="confirmatory rows are decided by the rule registered in advance; exploratory, "
+        "descriptive and robustness rows are reported, not decided",
+    ),
+    "market": st.column_config.TextColumn("Market", help=MARKET_HELP),
+    "estimator_set": st.column_config.TextColumn(
+        "Estimators",
+        help="primary: the estimators registered in advance; control: an independent check",
+    ),
+    "n_assets": "Pairs",
+    "b_hat": st.column_config.NumberColumn(
+        "Fitted slope",
+        format="%.3f",
+        help="slope of the line through the pairs (Deming regression: errors on both axes)",
+    ),
+    "mean_gap": st.column_config.NumberColumn(
+        "Gap to theory",
+        format="%+.3f",
+        help="observed minus predicted exponent, averaged over the pairs; 0 = theory exact",
+    ),
+    "gap_ci_low": st.column_config.NumberColumn("Gap, 95 % low", format="%+.3f"),
+    "gap_ci_high": st.column_config.NumberColumn("Gap, 95 % high", format="%+.3f"),
+    "p_holm": st.column_config.NumberColumn(
+        "p (Holm)",
+        help="joint test of slope and intercept against the prediction, corrected for "
+        "testing several relations",
+    ),
+    "decision": st.column_config.TextColumn(
+        "Decision",
+        help="rejected: p below 1 % and a gap beyond ±0.05; compatible: no rejection and the "
+        "whole interval within ±0.05; undecided otherwise",
+    ),
+    "days_needed": st.column_config.NumberColumn(
+        "Days to decide",
+        format="%.0f",
+        help="rough number of days of data an undecided test would need",
+    ),
+}
 
 
 def tests_page() -> None:
     st.title("Cross-sectional tests H1–H5")
+    how_to_read(
+        "Each row is one test of the theory: does a relation between two exponents hold "
+        "across the pairs? The **gap** is what the pairs show minus what the theory "
+        "predicts, averaged over the pairs; 0 means the theory is exact.",
+        "**Decision**: *rejected* when the test is clearly significant (p below 1 % after "
+        "correcting for several tests) and the gap is beyond ±0.05; *compatible* when it is "
+        "not significant and the whole 95 % interval of the gap lies within ±0.05; "
+        "*undecided* otherwise. Only the confirmatory rows are decided; the others describe.",
+        "**Observed against predicted**: one dot per pair, its memory of the order flow (H0) "
+        "across and the other exponent up; the dashed line is the theory's prediction.",
+        "**Specification curve**: the same test redone with every other reasonable choice "
+        "(estimator, data variant), sorted by gap. When most intervals sit on the same side "
+        "of the grey band (±0.05), the conclusion does not hinge on one choice.",
+    )
     sample = sample_picker()
     tests = store().tests(sample)  # type: ignore[arg-type]
     if tests.height == 0:
@@ -32,7 +102,7 @@ def tests_page() -> None:
         "decision",
         "days_needed",
     ).with_columns(pl.col("decision").replace_strict(DECISION_ICON, default=pl.col("decision")))
-    st.dataframe(view, hide_index=True, width="stretch")
+    st.dataframe(view, hide_index=True, width="stretch", column_config=COLUMNS)
     est = store().estimates(sample)  # type: ignore[arg-type]
     res = store().residuals(sample)  # type: ignore[arg-type]
     if res.height:
@@ -48,7 +118,7 @@ def tests_page() -> None:
                 alt.Chart(d.to_pandas())
                 .mark_circle(size=60, opacity=0.9)
                 .encode(
-                    x=alt.X("x:Q", title="Ĥ0", scale=alt.Scale(zero=False)),
+                    x=alt.X("x:Q", title="Ĥ0 (memory of order flow)", scale=alt.Scale(zero=False)),
                     y=alt.Y("y:Q", title=rel.exponent, scale=alt.Scale(zero=False)),
                     color=alt.Color(
                         "market:N", scale=MARKET_SCALE, legend=alt.Legend(title="market")
@@ -72,6 +142,10 @@ def tests_page() -> None:
     rob = store().robustness(sample)  # type: ignore[arg-type]
     if rob.height:
         st.subheader("Specification curve")
+        st.caption(
+            "Each dot is the same test with one other reasonable choice of estimator or data "
+            "variant, with its 95 % interval; the grey band is the ±0.05 margin of the rule."
+        )
         code = st.radio("Hypothesis", ["H1", "H2", "H3"], horizontal=True)
         d = (
             rob.filter((pl.col("hypothesis") == code) & pl.col("mean_gap").is_not_nan())

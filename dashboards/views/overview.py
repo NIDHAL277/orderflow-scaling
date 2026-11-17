@@ -112,7 +112,7 @@ def overview_page() -> None:
         )
     )
     st.page_link(
-        "pages/tests.py",
+        "views/tests.py",
         label="Every pair and the specification curve",
         icon=":material/arrow_forward:",
     )
@@ -131,7 +131,7 @@ def overview_page() -> None:
             )
         else:
             pipeline_card(s.health())
-        st.page_link("pages/health.py", label="Pipeline health", icon=":material/arrow_forward:")
+        st.page_link("views/health.py", label="Pipeline health", icon=":material/arrow_forward:")
 
 
 def pipeline_card(health: dict[str, Any]) -> None:
@@ -182,7 +182,7 @@ def forecasts_section(sample: str) -> None:
         "below 1, the model forecasts better."
     )
     st.page_link(
-        "pages/forecast.py", label="Per-pair losses and forecasts", icon=":material/arrow_forward:"
+        "views/forecast.py", label="Per-pair losses and forecasts", icon=":material/arrow_forward:"
     )
 
 
@@ -204,7 +204,7 @@ def venues_summary() -> None:
         if lines
         else "No pair comparable on two venues."
     )
-    st.page_link("pages/venues.py", label="H₀ by pair and venue", icon=":material/arrow_forward:")
+    st.page_link("views/venues.py", label="H₀ by pair and venue", icon=":material/arrow_forward:")
 
 
 overview_page()

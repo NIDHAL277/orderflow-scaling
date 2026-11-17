@@ -12,8 +12,10 @@ borderColor = "#D3DDEE"
 showSidebarBorder = false
 baseRadius = "0.75rem"
 buttonRadius = "0.75rem"
-font = "Inter:https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap, sans-serif"
-headingFont = "Space Grotesk:https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&display=swap, sans-serif"
+# fonts served by the app itself (dashboards/static/fonts, SIL Open Font License): a visitor's
+# browser never calls a third party such as Google Fonts
+font = "Inter, sans-serif"
+headingFont = "Space Grotesk, Inter, sans-serif"
 headingFontWeights = [700, 700, 600, 600, 600, 600]
 metricValueFontSize = "1.9rem"
 # spot and perpetual first, as everywhere in the project; then distinct, colour-blind safe hues
@@ -22,6 +24,45 @@ chartCategoricalColors = ["#2A78D6", "#EB6834", "#0F766E", "#6D28D9", "#B45309",
 [theme.sidebar]
 backgroundColor = "#F7FAFF"
 secondaryBackgroundColor = "#EAF0FB"
+
+[[theme.fontFaces]]
+family = "Inter"
+url = "app/static/fonts/inter-latin-400-normal.woff2"
+weight = "400"
+
+[[theme.fontFaces]]
+family = "Inter"
+url = "app/static/fonts/inter-latin-500-normal.woff2"
+weight = "500"
+
+[[theme.fontFaces]]
+family = "Inter"
+url = "app/static/fonts/inter-latin-600-normal.woff2"
+weight = "600"
+
+[[theme.fontFaces]]
+family = "Inter"
+url = "app/static/fonts/inter-latin-700-normal.woff2"
+weight = "700"
+
+[[theme.fontFaces]]
+family = "Space Grotesk"
+url = "app/static/fonts/space-grotesk-latin-500-normal.woff2"
+weight = "500"
+
+[[theme.fontFaces]]
+family = "Space Grotesk"
+url = "app/static/fonts/space-grotesk-latin-600-normal.woff2"
+weight = "600"
+
+[[theme.fontFaces]]
+family = "Space Grotesk"
+url = "app/static/fonts/space-grotesk-latin-700-normal.woff2"
+weight = "700"
+
+[server]
+# serves dashboards/static (the fonts above) under app/static/
+enableStaticServing = true
 
 [client]
 # visitors get the reader's menu, without the developer tools (Deploy, Rerun, Clear cache)

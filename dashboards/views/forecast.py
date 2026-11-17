@@ -5,13 +5,52 @@ from __future__ import annotations
 import altair as alt
 import polars as pl
 import streamlit as st
-from common import FORECAST_ICON, MODEL_SCALE, store
+from common import FORECAST_ICON, MARKET_HELP, MODEL_SCALE, how_to_read, store
 
 KEY_MODELS = ["har_log", "rough_rolling", "rough_theory", "rough_dev", "rough_gjr"]
+TEST_COLUMNS = {
+    "hypothesis": "Test",
+    "market": st.column_config.TextColumn("Market", help=MARKET_HELP),
+    "horizon": "Horizon (days)",
+    "model": "Model",
+    "reference": "Against",
+    "n_pairs": "Pairs",
+    "ratio": st.column_config.NumberColumn(
+        "Loss ratio",
+        format="%.3f",
+        help="mean loss of the model over mean loss of the reference; below 1 the model is better",
+    ),
+    "ci_low": st.column_config.NumberColumn("95 % low", format="%.3f"),
+    "ci_high": st.column_config.NumberColumn("95 % high", format="%.3f"),
+    "p_holm": st.column_config.NumberColumn(
+        "p (Holm)", help="corrected for testing several horizons and markets"
+    ),
+    "decision": st.column_config.TextColumn(
+        "Decision",
+        help="better or worse: significant and beyond the ±2 % margin; equivalent: the whole "
+        "interval within the margin; undecided otherwise",
+    ),
+}
 
 
 def forecast_page() -> None:
     st.title("Forecasting daily volatility and volume")
+    how_to_read(
+        "Each forecast predicts the average daily volatility (or traded volume) of a pair "
+        "over the next 1, 5 or 22 days, from past data only. The yardstick is **har_log**, a "
+        "standard benchmark (HAR on the logs).",
+        "**Loss ratio**: the model's average QLIKE loss divided by the reference's; below 1 "
+        "the model forecasts better. QLIKE ranks volatility forecasts correctly even though "
+        "the true volatility is only measured with noise.",
+        "**F1-F3** pool all pairs and use the same three-way rule as the tests, with a ±2 % "
+        "margin. F1: the rough predictor against HAR, for volatility; F2: the roughness "
+        "implied by the order flow against the one measured on volatility (the theory passes "
+        "if they are equivalent); F3: F1 for traded volume.",
+        "Models: **rough_rolling** uses the roughness measured over the last 24 months, "
+        "**rough_theory** the roughness implied by the order flow (2 H0 − 3/2), **rough_dev** "
+        "the roughness of the development year, **rough_gjr** the published kernel of "
+        "Gatheral, Jaisson & Rosenbaum (2018).",
+    )
     st.caption(
         "Out-of-sample forecasts of the average daily realised variance (or traded volume) over "
         "the next h days, from the 5-year daily history. Losses: QLIKE (primary) and squared "
@@ -54,13 +93,14 @@ def forecast_page() -> None:
             "p_holm",
             pl.col("decision").replace_strict(FORECAST_ICON, default=pl.col("decision")),
         ).sort("hypothesis", "market", "horizon")
-        st.dataframe(shown, hide_index=True, width="stretch")
+        st.dataframe(shown, hide_index=True, width="stretch", column_config=TEST_COLUMNS)
         st.altair_chart(pooled_chart(t), width="stretch")
 
     e = ev.filter(pl.col("target") == target)
     if e.height == 0:
         return
     st.subheader("Per-pair loss relative to HAR on log RV")
+    st.caption("One tick per pair: left of 1, the model beat HAR on that pair.")
     horizon = int(st.select_slider("Horizon (days)", sorted(e["horizon"].unique().to_list())))
     eh = e.filter(pl.col("horizon") == horizon)
     st.altair_chart(pair_ratio_chart(eh), width="stretch")
@@ -70,6 +110,10 @@ def forecast_page() -> None:
         .sort("market", "model")
     )
     st.markdown("**Share of pairs where the model is in the 90 % model confidence set**")
+    st.caption(
+        "The model confidence set keeps, pair by pair, the models that cannot be told apart "
+        "from the best one; a high share means the model is rarely beaten."
+    )
     st.altair_chart(mcs_chart(mcs), width="stretch")
 
     st.subheader("Forecasts of one pair")
@@ -116,7 +160,15 @@ def live_section(target: str) -> None:
         .sort("market", "symbol")
     )
     st.caption(f"{label}; HAR on logs and the rough predictor, average over the next h days")
-    st.dataframe(wide, hide_index=True, width="stretch")
+    st.dataframe(
+        wide,
+        hide_index=True,
+        width="stretch",
+        column_config={
+            "symbol": "Pair",
+            "market": st.column_config.TextColumn("Market", help=MARKET_HELP),
+        },
+    )
     scored = store().forecast_live_scored()
     if scored.height and scored["qlike"].is_not_null().any():
         perf = (
@@ -126,7 +178,19 @@ def live_section(target: str) -> None:
             .sort("horizon", "mean_qlike")
         )
         st.markdown("**Live track record** (mean QLIKE of the forecasts whose target is complete)")
-        st.dataframe(perf, hide_index=True, width="stretch")
+        st.dataframe(
+            perf,
+            hide_index=True,
+            width="stretch",
+            column_config={
+                "model": "Model",
+                "horizon": "Horizon (days)",
+                "mean_qlike": st.column_config.NumberColumn(
+                    "Mean QLIKE", format="%.4f", help="lower is better"
+                ),
+                "forecasts": "Forecasts scored",
+            },
+        )
 
 
 def pooled_chart(t: pl.DataFrame) -> alt.FacetChart:

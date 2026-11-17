@@ -45,6 +45,12 @@ DECISION_ICON = {
 }
 MARKET_NAMES = {"spot": "Spot", "um": "Perpetual"}
 VENUE_NAMES = {"binance": "Binance", "bybit": "Bybit", "okx": "OKX"}
+MARKET_HELP = "spot, or um: the USD-M perpetual futures of the same pair"
+SAMPLE_HELP = (
+    "confirmation: the year 2025-11 to 2026-10, analysed with every choice frozen in advance "
+    "(the result that counts); development: the year before, used to build the method; "
+    "rolling: the latest 24 months, re-estimated by the daily run."
+)
 
 
 @st.cache_resource
@@ -58,4 +64,15 @@ def store() -> Store:
 
 
 def sample_picker() -> str:
-    return str(st.sidebar.selectbox("Sample", ["confirmation", "development", "rolling"], index=0))
+    return str(
+        st.sidebar.selectbox(
+            "Sample", ["confirmation", "development", "rolling"], index=0, help=SAMPLE_HELP
+        )
+    )
+
+
+def how_to_read(*paragraphs: str) -> None:
+    """Fold a short guide in plain words under the page title."""
+    with st.expander("How to read this page", icon=":material/menu_book:"):
+        for text in paragraphs:
+            st.markdown(text)
