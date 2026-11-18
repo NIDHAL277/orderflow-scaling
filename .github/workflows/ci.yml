@@ -50,7 +50,7 @@ jobs:
         run: uv run --frozen ofs --data-dir /tmp/ofs-data simulate study --profile ci --max-cells 12
       - name: Simulator acceptance (M4)
         run: uv run --frozen ofs --data-dir /tmp/ofs-data simulate check
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: coverage
           path: coverage.xml
@@ -99,7 +99,7 @@ jobs:
           root_file: |
             main.tex
             slides.tex
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: weekly-report
           path: |
