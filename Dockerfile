@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 # One image for the three services (pipeline, api, dashboard); multi-arch (amd64 + arm64 Ampere A1).
-FROM ghcr.io/astral-sh/uv:0.13.7 AS uv
+FROM ghcr.io/astral-sh/uv:0.13.9 AS uv
 
 FROM python:3.12-slim-bookworm
 ARG TARGETARCH
