@@ -19,6 +19,25 @@ In the production image the tags are baked at build time
 
 The full text is [config/preregistration.md](https://github.com/NIDHAL277/orderflow-scaling/blob/main/config/preregistration.md).
 
+## Commit ids in the results
+
+Every row of the estimates, tests and forecast tables records `code_version`, the commit
+that computed it; the stamp ends in `+dirty` when tracked files had uncommitted changes,
+and no result row has it. Before the first push to GitHub (18 November 2026) the history
+was rewritten once, only to replace the author email with GitHub's private address: the
+files, dates and messages of every commit are unchanged, but every commit id changed. The
+results were computed earlier, so they record the earlier ids:
+
+| `code_version` in the results | Public commit | Results |
+|---|---|---|
+| `e88fe171072d` | [`e01f7d96acd9`](https://github.com/NIDHAL277/orderflow-scaling/commit/e01f7d96acd9), tag `config-frozen` | confirmation estimates and tests, forecast confirmation tests, estimates history |
+| `801063739473` | [`f14b95e57c3b`](https://github.com/NIDHAL277/orderflow-scaling/commit/f14b95e57c3b) | development estimates, forecast development tests |
+| `b54080239763` | [`9e65d28dd17e`](https://github.com/NIDHAL277/orderflow-scaling/commit/9e65d28dd17e) | development tests |
+| `2bc09c381596` | [`d40500f53f07`](https://github.com/NIDHAL277/orderflow-scaling/commit/d40500f53f07) | rolling estimates |
+
+The confirmatory results were therefore computed at the commit tagged `config-frozen`
+itself, with no uncommitted change.
+
 ## Timeline (12 weeks, ~15 h a week)
 
 | Phase | Weeks | Gate |
