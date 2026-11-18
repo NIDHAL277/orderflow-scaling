@@ -1,0 +1,2331 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Asset-by-asset test of the order-flow / volume / volatility / impact scaling laws on crypto">
+      
+      
+      
+      
+        <link rel="prev" href="../estimators/">
+      
+      
+        <link rel="next" href="../changepoints/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.1">
+    
+    
+      
+        <title>Forecasting - orderflow-scaling</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.57a0d79d.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.fb2fffe2.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#forecasting-extension-f" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="orderflow-scaling" class="md-header__button md-logo" aria-label="orderflow-scaling" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            orderflow-scaling
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Forecasting
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/NIDHAL277/orderflow-scaling" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="orderflow-scaling" class="md-nav__button md-logo" aria-label="orderflow-scaling" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    orderflow-scaling
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/NIDHAL277/orderflow-scaling" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../compliance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compliance with the spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design-faq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Design decisions (FAQ)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../data-sources/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data sources
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../literature-watch/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Literature watch
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../estimators/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Estimators
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasting
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#target-data-origins" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Target, data, origins
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#models" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Models
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Models">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-exact-rough-predictor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The exact rough predictor
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-not-just-the-published-kernel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why not just the published kernel
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#from-log-forecasts-to-levels" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        From log forecasts to levels
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#evaluation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Evaluation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#simulation-check" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Simulation check
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#live-forecasts-production" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Live forecasts (production)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#outputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Outputs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#limitations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Limitations
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../changepoints/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Change-point monitor
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../l2-collector/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    L2 collector
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../venues/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Other venues (Bybit, OKX)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../protocol/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Protocol
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../operations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deploy-oracle/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deploying on Oracle Cloud
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_16" >
+        
+          
+          <label class="md-nav__link" for="__nav_16" id="__nav_16_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decisions
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_16_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_16">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Decisions
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr/0001-record-decisions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR 0001 — Record architecture decisions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr/0002-versioned-daily-outputs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR 0002 — Per-day outputs versioned in the file name
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr/0003-causal-seasonal-profile/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR 0003 — Causal hour-of-week profile
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr/0004-additive-daily-statistics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR 0004 — Additive daily statistics and the synchronized bootstrap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr/0005-volatility-horizon-and-estimators/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR 0005 — Volatility: extraday horizon; principal estimator decided by simulation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr/0006-protocol-state-in-the-image/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR 0006 — Protocol state baked into the production image
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr/0007-daily-files-over-monthly/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR 0007 — Daily files for the backfill, chunked deletion
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr/0008-h0-variance-and-weighting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR 0008 — H0: uncentred variances, 1/τ weights, identification of the fractional part
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr/0009-ohlc-check-in-ticks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR 0009 — OHLC check against klines: robust to one-tick feed differences
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr/0010-catch-up-and-corrections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR 0010 — Daily catch-up window and application of re-published files
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr/0011-five-year-volatility-history/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR 0011 — Five-year daily-volatility history as a separate sample
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr/0012-trade-id-continuity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR 0012 — Trade-id continuity: block missing rows, not unpublished fills
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr/0013-forecasting-extension/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR 0013 — Forecasting extension: exact rough predictor, model-based levels
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr/0014-l2-collector/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR 0014 — Continuous L2 collector: sampled books, every trade, two connections
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr/0015-volume-centred-order-flow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR 0015 — H0 on the order flow centred day by day in proportion to volume
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr/0016-monthly-packs-of-daily-statistics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR 0016 — Monthly packs of the daily statistics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_17" >
+        
+          
+          <label class="md-nav__link" for="__nav_17" id="__nav_17_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Incidents
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_17_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_17">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Incidents
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../incidents/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Incident notes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../incidents/2026-11-09-manifest-late-null-column/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2026-11-09: Manifest late null column
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../incidents/2026-11-09-perpetual-klines-without-trades/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2026-11-09: Perpetual klines without trades
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../incidents/2026-11-09-network-error-labelled-delisted/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2026-11-09: Network error labelled delisted
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../incidents/2026-11-09-futures-kline-open-convention/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2026-11-09: Futures kline open convention
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../incidents/2026-11-09-universe-build-without-retries/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2026-11-09: Universe build without retries
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../incidents/2026-11-09-corrections-not-applied/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2026-11-09: Re-published files not applied downstream
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../incidents/2026-11-09-unpublished-trade-ids/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2026-11-09: Unpublished trade ids block perpetual days
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../incidents/2026-11-09-fgn-precision-and-lost-study/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2026-11-09: fGn embedding failed at H = 0.9 and a study run was lost
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../incidents/2026-11-09-cleanup-deleted-derived-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2026-11-09: A cleanup command deleted derived data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../incidents/2026-11-10-restart-and-slow-resume/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2026-11-10: A restart stopped the long jobs, and the resume was slow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../incidents/2026-11-15-paper-had-never-been-compiled/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2026-11-15: The paper had never been compiled
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../incidents/2026-11-15-health-check-read-every-report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2026-11-15: The health check read every validation report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../incidents/2026-11-15-truncated-download-stopped-the-run/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2026-11-15: A truncated download stopped the venue comparison
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../incidents/2026-11-15-forked-workers-hang-on-linux/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2026-11-15: Forked pool workers hang on Linux
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#target-data-origins" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Target, data, origins
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#models" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Models
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Models">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-exact-rough-predictor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The exact rough predictor
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-not-just-the-published-kernel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why not just the published kernel
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#from-log-forecasts-to-levels" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        From log forecasts to levels
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#evaluation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Evaluation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#simulation-check" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Simulation check
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#live-forecasts-production" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Live forecasts (production)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#outputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Outputs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#limitations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Limitations
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="forecasting-extension-f">Forecasting extension (F)<a class="headerlink" href="#forecasting-extension-f" title="Permanent link">&para;</a></h1>
+<p>The scaling laws say how rough volatility should be, <code>H_σ = 2 H0 − 3/2</code> (paper, Remark
+4.2). The forecasting extension asks the practical question: <strong>does that roughness help
+forecast volatility, and does the roughness implied by order flow forecast as well as the
+roughness measured on volatility itself?</strong> Daily traded volume gets the same treatment.</p>
+<p>It is a statistical evaluation (losses, Diebold–Mariano tests, model confidence set). The
+specification excludes trading strategies and P&amp;L backtests (§4), and so does this
+extension. The design is pre-registered (<code>config/preregistration.md</code> §10) and frozen with
+the rest of <code>config/estimation.yaml</code>.</p>
+<div class="highlight"><pre><span></span><code>ofs<span class="w"> </span>forecast<span class="w"> </span>--sample<span class="w"> </span>development<span class="w"> </span>--jobs<span class="w"> </span><span class="m">4</span><span class="w">      </span><span class="c1"># needs the tag prereg-v1</span>
+ofs<span class="w"> </span>forecast<span class="w"> </span>--sample<span class="w"> </span>confirmation<span class="w"> </span>--jobs<span class="w"> </span><span class="m">4</span><span class="w">     </span><span class="c1"># needs config-frozen (confirmatory)</span>
+ofs<span class="w"> </span>simulate<span class="w"> </span>forecast<span class="w"> </span>--reps<span class="w"> </span><span class="m">10</span><span class="w"> </span>--jobs<span class="w"> </span><span class="m">4</span><span class="w">        </span><span class="c1"># check on simulated rough volatility</span>
+</code></pre></div>
+<h2 id="target-data-origins">Target, data, origins<a class="headerlink" href="#target-data-origins" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Target</strong>: the average of the series over the next <code>h</code> days, <code>y_h(t) = mean(y[t+1..t+h])</code>,
+  <code>h ∈ {1, 5, 22}</code> (day, week, month; Corsi, 2009). Series: daily 5-minute realised variance
+  (<code>rv_5m</code>) and daily traded quote volume (<code>quote_volume</code>).</li>
+<li><strong>Data</strong>: the 5-year daily history from monthly 1-minute klines (<code>daily_stats/rv_history</code>,
+  <a href="../adr/0011-five-year-volatility-history/">ADR 0011</a>), cut at the end of the evaluated
+  sample: no later day is read.</li>
+<li><strong>Origins</strong>: every day of the evaluated period. <code>development</code>: 2023-05-01 → 2025-10-31
+  (the first origin needs a 500-day window); <code>confirmation</code>: 2025-11-01 → 2026-10-31.
+  Forecasts use the data up to and including the origin only; a test perturbs every value
+  after the origin and checks that no forecast moves.</li>
+</ul>
+<h2 id="models">Models<a class="headerlink" href="#models" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th>Forecast of the log series</th>
+<th>Parameters (rolling 500-day window)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>rw</code></td>
+<td>last value</td>
+<td>none</td>
+</tr>
+<tr>
+<td><code>ar_log</code></td>
+<td>AR(5) on log y, direct projection on <code>log y_h</code></td>
+<td>OLS, refitted daily</td>
+</tr>
+<tr>
+<td><code>har</code></td>
+<td>HAR of Corsi (2009) on levels</td>
+<td>OLS, insanity filter (in-window range)</td>
+</tr>
+<tr>
+<td><code>har_log</code></td>
+<td>HAR on the logs of the daily, weekly, monthly averages (benchmark)</td>
+<td>OLS</td>
+</tr>
+<tr>
+<td><code>rough_gjr</code></td>
+<td>kernel of Gatheral, Jaisson &amp; Rosenbaum (2018, §5) as published</td>
+<td>H by their moment regression</td>
+</tr>
+<tr>
+<td><code>rough_rolling</code></td>
+<td>exact predictor (below)</td>
+<td>H, noise ratio, scale by Whittle</td>
+</tr>
+<tr>
+<td><code>rough_dev</code></td>
+<td>exact predictor</td>
+<td>H = development estimate of H_σ; noise ratio by Whittle</td>
+</tr>
+<tr>
+<td><code>rough_theory</code></td>
+<td>exact predictor</td>
+<td><strong>H = 2 Ĥ0 − 3/2</strong> (development H0, floored at 0.01)</td>
+</tr>
+</tbody>
+</table>
+<p>Rough parameters are re-estimated every 5 days, regressions every day.</p>
+<h3 id="the-exact-rough-predictor">The exact rough predictor<a class="headerlink" href="#the-exact-rough-predictor" title="Permanent link">&para;</a></h3>
+<p>The daily log RV is modelled as the Whittle estimator of Fukasawa, Takabatake &amp; Westphal
+already models it for H_σ: the <strong>day average of a fractional Brownian motion plus white
+measurement noise</strong>, <code>Y_t = c + ν · mean_{day t} W^H + ε_t</code>. Its increments are stationary
+with autocovariance <code>ν² [g_H(k) + r (2·1{k=0} − 1{|k|=1})]</code>, where <code>r = var ε / ν²</code> and</p>
+<div class="highlight"><pre><span></span><code>g_H(k) = ½ δ⁴Φ(k),   Φ(x) = |x|^{2H+2} / ((2H+1)(2H+2))      (fourth central difference)
+</code></pre></div>
+<p>is the autocovariance of the increments of day-averaged fBm (a test checks it against the
+spectral density the Whittle estimator uses, to 6 digits). The forecast of <code>Y_{t+D}</code> is the
+Gaussian conditional expectation given the last 499 increments: one Toeplitz system per
+horizon (Levinson recursion), weights on past values summing to one (no level parameter).
+The same algebra gives the prediction-error variance, hence the level forecast
+<code>E[e^{Y_{t+D}}] = exp(forecast + ½ var)</code>. A test checks on simulated paths that the
+one-step mean squared error equals that variance.</p>
+<h3 id="why-not-just-the-published-kernel">Why not just the published kernel<a class="headerlink" href="#why-not-just-the-published-kernel" title="Permanent link">&para;</a></h3>
+<p>The GJR (2018) formula is the prediction of a <em>continuously observed, noise-free</em> fBm with
+an infinite past. Daily RV is neither: it is a daily average and it carries estimation
+noise. In a probe on simulated fBm sampled daily (H = 0.1, 200-day window), the one-step
+mean squared error of the kernel discretised by cell integrals was 13 % above that of the
+exact Gaussian predictor (midpoint cells: 5 %); the kernel puts 63 % of the weight on the
+last day. With measurement noise the gap widens. <code>rough_gjr</code> is kept as the published
+benchmark, <code>rough_rolling</code> is the principal rough model.</p>
+<h3 id="from-log-forecasts-to-levels">From log forecasts to levels<a class="headerlink" href="#from-log-forecasts-to-levels" title="Permanent link">&para;</a></h3>
+<p>Every log model maps its forecast to a level with its own lognormal correction
+<code>exp(μ + s²/2)</code>: in-window residual variance (regressions), model-implied conditional
+variance (exact predictor), <code>c_H K D^{2H}</code> with <code>c_H = Γ(3/2−H) / (Γ(H+1/2) Γ(2−2H))</code>
+(GJR kernel). The empirical smearing factor of Duan (1983) is available
+(<code>level_correction: smearing</code>) but is noisy at long horizons: 250 overlapping 22-day
+ratios hold about 11 independent blocks. With the true parameters, smearing cost the exact
+predictor about 10 % of QLIKE at 22 days in the probe, the lognormal correction 0.5 %.</p>
+<h2 id="evaluation">Evaluation<a class="headerlink" href="#evaluation" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Losses</strong> on the level of the target: QLIKE <code>y/f − log(y/f) − 1</code> (primary) and squared
+  error. With a noisy but conditionally unbiased proxy (daily RV for integrated variance)
+  both rank forecasts as the latent variance would (Patton, 2011); the squared error of
+  logs does not and is not used.</li>
+<li><strong>Per pair</strong>: mean losses on the dates where every model forecasts, ratio to <code>har_log</code>,
+  Diebold–Mariano test against <code>har_log</code> (Newey–West with <code>max(h−1, ⌊4(T/100)^{2/9}⌋)</code> lags,
+  Harvey–Leybourne–Newbold correction, Student t), model confidence set of Hansen, Lunde &amp;
+  Nason (2011) at 90 % (T_max statistic, stationary bootstrap of dates, mean block 22 days).</li>
+<li><strong>Pooled across pairs</strong> (hypotheses): per pair the loss differential is scaled by the mean
+  loss of the reference model, averaged across the pairs present each date, and the DM test
+  is run on that single series (cross-sectional correlation between cryptos is then
+  harmless). Its mean is the average relative change of the loss, <code>ratio − 1</code>, with a
+  stationary-bootstrap 95 % CI over dates.</li>
+<li><strong>Decision rule</strong>: the one of the main tests, on the relative loss change, with margin
+  0.02: <em>better</em> / <em>worse</em> when the Holm-corrected DM test rejects at 1 % and
+  <code>|ratio − 1| &gt; 0.02</code>; <em>equivalent</em> when it does not reject and the CI lies within
+  <code>[0.98, 1.02]</code>; <em>undecided</em> otherwise.</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Hypothesis</th>
+<th>Target</th>
+<th>Model / reference</th>
+<th>Reading</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>F1</td>
+<td>volatility</td>
+<td><code>rough_rolling</code> / <code>har_log</code></td>
+<td>does roughness forecast better than HAR?</td>
+</tr>
+<tr>
+<td>F2</td>
+<td>volatility</td>
+<td><code>rough_theory</code> / <code>rough_dev</code></td>
+<td>does the order-flow H forecast as well as the volatility H? The theory passes if <em>equivalent</em></td>
+</tr>
+<tr>
+<td>F3</td>
+<td>volume</td>
+<td><code>rough_rolling</code> / <code>har_log</code></td>
+<td>F1 for traded volume</td>
+</tr>
+</tbody>
+</table>
+<p>On the development sample <code>rough_dev</code> and <code>rough_theory</code> take H from estimates of the same
+period: their rows are flagged <code>look_ahead</code> and are exploratory. On the confirmation sample
+H comes from the development sample only, so F2 is a genuine out-of-sample test of the
+scaling law.</p>
+<h2 id="simulation-check">Simulation check<a class="headerlink" href="#simulation-check" title="Permanent link">&para;</a></h2>
+<p><code>ofs simulate forecast</code> simulates the model of the exact predictor (H ∈ {0.05, 0.1, 0.2},
+noise sd ∈ {0, 0.3}, ν = 0.3, 1,500 days) and reports each model's QLIKE relative to
+<code>har_log</code> (<code>data/simulation/forecast_study.parquet</code>, report table <code>tab:forecast-sim</code>).</p>
+<p>Full run (2026-11-10, 10 replications per cell; mean ratio to <code>har_log</code>, with the range
+over the six (H, noise) cells):</p>
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th>h = 1</th>
+<th>h = 5</th>
+<th>h = 22</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>rough_rolling</code> (H by Whittle on the window)</td>
+<td>0.988-0.992</td>
+<td>0.960-0.979</td>
+<td>0.873-0.932</td>
+</tr>
+<tr>
+<td><code>rough_dev</code> (true H)</td>
+<td>0.986-0.989</td>
+<td>0.946-0.974</td>
+<td>0.860-0.927</td>
+</tr>
+<tr>
+<td><code>rough_gjr</code> (published kernel)</td>
+<td>0.995-1.083</td>
+<td>0.983-1.083</td>
+<td>0.901-0.999</td>
+</tr>
+<tr>
+<td><code>ar_log</code></td>
+<td>1.003-1.015</td>
+<td>0.996-1.030</td>
+<td>0.968-1.037</td>
+</tr>
+<tr>
+<td><code>har</code> (levels)</td>
+<td>1.008-1.609</td>
+<td>1.015-2.307</td>
+<td>1.015-1.680</td>
+</tr>
+<tr>
+<td><code>rw</code></td>
+<td>1.08-1.61</td>
+<td>1.27-2.65</td>
+<td>1.55-3.87</td>
+</tr>
+</tbody>
+</table>
+<p>The exact predictor beats HAR in 90-100 % of the replications at one day and in 70-90 % at
+22 days; the Whittle H of the window is close to the truth (0.105 for 0.1, 0.215 for 0.2;
+0.10 for 0.05 with noise, where roughness and noise are hardest to separate). The published
+kernel loses to HAR at short horizons once there is measurement noise (+8 % at H = 0.05)
+but helps at 22 days. HAR on levels is unstable at H = 0.2 (ratios up to 2.3 with a large
+spread): heavy-tailed levels defeat the insanity filter, which is why the logs version is
+the benchmark.</p>
+<p>Earlier exploratory run (4 replications, H = 0.1, noise 0.3):</p>
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th>h = 1</th>
+<th>h = 5</th>
+<th>h = 22</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>rough_rolling</code></td>
+<td>0.989</td>
+<td>0.976</td>
+<td>0.915</td>
+</tr>
+<tr>
+<td><code>rough_dev</code> (true H)</td>
+<td>0.988</td>
+<td>0.975</td>
+<td>0.915</td>
+</tr>
+<tr>
+<td><code>rough_gjr</code></td>
+<td>1.030</td>
+<td>1.053</td>
+<td>0.981</td>
+</tr>
+<tr>
+<td><code>ar_log</code></td>
+<td>1.019</td>
+<td>1.055</td>
+<td>1.084</td>
+</tr>
+<tr>
+<td><code>har</code> (levels)</td>
+<td>1.028</td>
+<td>1.055</td>
+<td>1.053</td>
+</tr>
+<tr>
+<td><code>rw</code></td>
+<td>1.40</td>
+<td>2.10</td>
+<td>2.88</td>
+</tr>
+</tbody>
+</table>
+<p>Under rough volatility the exact predictor wins and its advantage grows with the horizon;
+estimating H costs nothing against knowing it (Whittle underestimates H and the noise ratio
+together on 500-day windows, with little effect on the forecasts). A weekly CI test
+(<code>tests/simulation/test_forecast_sim.py</code>, marked slow) keeps these orderings.</p>
+<h2 id="live-forecasts-production">Live forecasts (production)<a class="headerlink" href="#live-forecasts-production" title="Permanent link">&para;</a></h2>
+<p>The daily run (<code>ofs daily</code>) also forecasts every pair at the end of the day just
+completed, with every configured model, for the next 1, 5 and 22 days
+(<code>ofs.forecast.live</code>). The series is the 5-year history (complete months, klines) followed
+by the daily aggTrades statistics for the days it does not cover yet: the same 5-minute RV,
+and the notional traded as the quote volume. Each day's forecasts are written once
+(<code>data/forecast/live/{day}.parquet</code>) and never recomputed; as targets complete, the run
+scores them (<code>live_scored.parquet</code>), which builds a live, genuinely out-of-sample track
+record of every model. <code>GET /forecast/live</code> serves the latest forecasts (with the
+annualised volatility <code>sqrt(365 × average daily variance)</code>); the dashboard shows them as a
+"live outlook" with the track record. Live forecasts estimate on real data, so they start
+once the protocol allows the rolling estimates (tag <code>prereg-v1</code>).</p>
+<h2 id="outputs">Outputs<a class="headerlink" href="#outputs" title="Permanent link">&para;</a></h2>
+<p><code>data/forecast/</code>: <code>forecasts_{sample}.parquet</code> (one row per pair, market, target, model,
+horizon and origin, with the realised target, both losses, H and the noise ratio),
+<code>evaluation_{sample}.parquet</code> (per pair) and <code>tests_{sample}.parquet</code> (F1–F3). They are
+served by the API (<code>/forecast/tests</code>, <code>/forecast/evaluation</code>, <code>/forecasts/{symbol}</code>,
+<code>/forecast/live</code>), shown
+on the dashboard page <em>Forecasting</em>, and in the report (table <code>tab:forecast</code>, figure 9).</p>
+<h2 id="limitations">Limitations<a class="headerlink" href="#limitations" title="Permanent link">&para;</a></h2>
+<ul>
+<li>The rough predictor assumes the H of the window holds over the horizon; regime changes
+  are not modelled by the forecasts (the change-point monitor of H0,
+  <a href="../changepoints/">changepoints</a>, flags them separately).</li>
+<li>No weekday effect is modelled for any model (weekends trade less in crypto).</li>
+<li><code>rough_theory</code> floors <code>2 Ĥ0 − 3/2</code> at 0.01: for <code>Ĥ0 &lt; 0.755</code> the theory predicts a
+  non-positive H_σ, which no fBm predictor can use; the number of floored pairs is reported.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "content.code.copy"], "search": "../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.a5f9d56c.min.js"></script>
+      
+    
+  </body>
+</html>

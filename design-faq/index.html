@@ -1,0 +1,2209 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Asset-by-asset test of the order-flow / volume / volatility / impact scaling laws on crypto">
+      
+      
+      
+      
+        <link rel="prev" href="../compliance/">
+      
+      
+        <link rel="next" href="../architecture/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.1">
+    
+    
+      
+        <title>Design decisions (FAQ) - orderflow-scaling</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.57a0d79d.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.fb2fffe2.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#design-decisions-in-twelve-questions" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="orderflow-scaling" class="md-header__button md-logo" aria-label="orderflow-scaling" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            orderflow-scaling
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Design decisions (FAQ)
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/NIDHAL277/orderflow-scaling" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="orderflow-scaling" class="md-nav__button md-logo" aria-label="orderflow-scaling" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    orderflow-scaling
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/NIDHAL277/orderflow-scaling" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../compliance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compliance with the spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Design decisions (FAQ)
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Design decisions (FAQ)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-why-test-the-theory-asset-by-asset-rather-than-on-average" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Why test the theory asset by asset rather than on average?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-how-is-h0-estimated-and-why-weights-1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. How is H0 estimated, and why weights ∝ 1/τ?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-why-reduce-the-trades-to-additive-daily-statistics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Why reduce the trades to additive daily statistics?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-why-a-synchronized-block-bootstrap-and-why-widen-it-by-k" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Why a synchronized block bootstrap, and why widen it by k?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-why-simulate-before-touching-real-data-and-what-did-it-change" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Why simulate before touching real data, and what did it change?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-why-whittle-for-h_-and-why-is-h2-limited" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Why Whittle for H_σ, and why is H2 "limited"?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-why-rejected-compatible-undecided-with-a-margin" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Why "rejected / compatible / undecided" with a margin?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-why-a-pre-registration-enforced-in-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Why a pre-registration enforced in code?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-why-an-exact-rough-predictor-qlike-and-a-lognormal-level-correction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Why an "exact" rough predictor, QLIKE, and a lognormal level correction?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-what-broke-on-real-data-and-what-changed-because-of-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. What broke on real data, and what changed because of it?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-what-did-the-confirmation-year-show" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. What did the confirmation year show?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12-what-are-the-limits-and-what-would-come-next" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. What are the limits, and what would come next?
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../data-sources/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data sources
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../literature-watch/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Literature watch
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../estimators/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Estimators
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../forecasting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecasting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../changepoints/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Change-point monitor
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../l2-collector/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    L2 collector
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../venues/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Other venues (Bybit, OKX)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../protocol/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Protocol
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../operations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deploy-oracle/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deploying on Oracle Cloud
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_16" >
+        
+          
+          <label class="md-nav__link" for="__nav_16" id="__nav_16_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decisions
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_16_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_16">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Decisions
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr/0001-record-decisions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR 0001 — Record architecture decisions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr/0002-versioned-daily-outputs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR 0002 — Per-day outputs versioned in the file name
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr/0003-causal-seasonal-profile/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR 0003 — Causal hour-of-week profile
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr/0004-additive-daily-statistics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR 0004 — Additive daily statistics and the synchronized bootstrap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr/0005-volatility-horizon-and-estimators/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR 0005 — Volatility: extraday horizon; principal estimator decided by simulation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr/0006-protocol-state-in-the-image/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR 0006 — Protocol state baked into the production image
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr/0007-daily-files-over-monthly/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR 0007 — Daily files for the backfill, chunked deletion
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr/0008-h0-variance-and-weighting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR 0008 — H0: uncentred variances, 1/τ weights, identification of the fractional part
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr/0009-ohlc-check-in-ticks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR 0009 — OHLC check against klines: robust to one-tick feed differences
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr/0010-catch-up-and-corrections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR 0010 — Daily catch-up window and application of re-published files
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr/0011-five-year-volatility-history/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR 0011 — Five-year daily-volatility history as a separate sample
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr/0012-trade-id-continuity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR 0012 — Trade-id continuity: block missing rows, not unpublished fills
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr/0013-forecasting-extension/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR 0013 — Forecasting extension: exact rough predictor, model-based levels
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr/0014-l2-collector/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR 0014 — Continuous L2 collector: sampled books, every trade, two connections
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr/0015-volume-centred-order-flow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR 0015 — H0 on the order flow centred day by day in proportion to volume
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adr/0016-monthly-packs-of-daily-statistics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ADR 0016 — Monthly packs of the daily statistics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_17" >
+        
+          
+          <label class="md-nav__link" for="__nav_17" id="__nav_17_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Incidents
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_17_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_17">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Incidents
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../incidents/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Incident notes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../incidents/2026-11-09-manifest-late-null-column/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2026-11-09: Manifest late null column
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../incidents/2026-11-09-perpetual-klines-without-trades/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2026-11-09: Perpetual klines without trades
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../incidents/2026-11-09-network-error-labelled-delisted/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2026-11-09: Network error labelled delisted
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../incidents/2026-11-09-futures-kline-open-convention/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2026-11-09: Futures kline open convention
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../incidents/2026-11-09-universe-build-without-retries/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2026-11-09: Universe build without retries
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../incidents/2026-11-09-corrections-not-applied/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2026-11-09: Re-published files not applied downstream
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../incidents/2026-11-09-unpublished-trade-ids/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2026-11-09: Unpublished trade ids block perpetual days
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../incidents/2026-11-09-fgn-precision-and-lost-study/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2026-11-09: fGn embedding failed at H = 0.9 and a study run was lost
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../incidents/2026-11-09-cleanup-deleted-derived-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2026-11-09: A cleanup command deleted derived data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../incidents/2026-11-10-restart-and-slow-resume/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2026-11-10: A restart stopped the long jobs, and the resume was slow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../incidents/2026-11-15-paper-had-never-been-compiled/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2026-11-15: The paper had never been compiled
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../incidents/2026-11-15-health-check-read-every-report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2026-11-15: The health check read every validation report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../incidents/2026-11-15-truncated-download-stopped-the-run/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2026-11-15: A truncated download stopped the venue comparison
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../incidents/2026-11-15-forked-workers-hang-on-linux/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2026-11-15: Forked pool workers hang on Linux
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-why-test-the-theory-asset-by-asset-rather-than-on-average" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Why test the theory asset by asset rather than on average?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-how-is-h0-estimated-and-why-weights-1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. How is H0 estimated, and why weights ∝ 1/τ?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-why-reduce-the-trades-to-additive-daily-statistics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Why reduce the trades to additive daily statistics?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-why-a-synchronized-block-bootstrap-and-why-widen-it-by-k" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Why a synchronized block bootstrap, and why widen it by k?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-why-simulate-before-touching-real-data-and-what-did-it-change" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Why simulate before touching real data, and what did it change?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-why-whittle-for-h_-and-why-is-h2-limited" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Why Whittle for H_σ, and why is H2 "limited"?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-why-rejected-compatible-undecided-with-a-margin" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Why "rejected / compatible / undecided" with a margin?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-why-a-pre-registration-enforced-in-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Why a pre-registration enforced in code?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-why-an-exact-rough-predictor-qlike-and-a-lognormal-level-correction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Why an "exact" rough predictor, QLIKE, and a lognormal level correction?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-what-broke-on-real-data-and-what-changed-because-of-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. What broke on real data, and what changed because of it?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-what-did-the-confirmation-year-show" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. What did the confirmation year show?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12-what-are-the-limits-and-what-would-come-next" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. What are the limits, and what would come next?
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="design-decisions-in-twelve-questions">Design decisions in twelve questions<a class="headerlink" href="#design-decisions-in-twelve-questions" title="Permanent link">&para;</a></h1>
+<p>The choices a reviewer is most likely to question, each with the short answer, the
+evidence, and where it lives in the code.</p>
+<h2 id="1-why-test-the-theory-asset-by-asset-rather-than-on-average">1. Why test the theory asset by asset rather than on average?<a class="headerlink" href="#1-why-test-the-theory-asset-by-asset-rather-than-on-average" title="Permanent link">&para;</a></h2>
+<p>The theory predicts <em>relations</em> between exponents (<code>H_vol = H0 − 1/2</code>, <code>H_σ = 2H0 − 3/2</code>,
+<code>δ = 2 − 2H0</code>). An average over assets can match the prediction by coincidence; a relation
+must also hold <em>across</em> assets whose <code>H0</code> differ. So each pair gives a point (<code>Ĥ0</code>, <code>Ŷ</code>),
+and the test is on the line through 60 points: slope and intercept jointly, against the
+predicted ones. Both coordinates are estimated with error, so ordinary least squares would
+flatten the slope (attenuation bias); Deming regression uses the ratio of the two error
+variances, taken from the bootstrap. The risk is low power if <code>H0</code> hardly varies across
+pairs; the decision rule then says "undecided" rather than forcing an answer.
+Code: <code>ofs.inference.hypotheses.cross_test</code>, <code>ofs.inference.deming</code>.</p>
+<h2 id="2-how-is-h0-estimated-and-why-weights-1">2. How is <code>H0</code> estimated, and why weights ∝ 1/τ?<a class="headerlink" href="#2-how-is-h0-estimated-and-why-weights-1" title="Permanent link">&para;</a></h2>
+<p>The signed flow is modelled as a fractional part plus a martingale (the paper's Theorem
+3.6): <code>Var(X_{t+τ} − X_t) = σ1² τ^{2H0} + σ2² τ</code>. The aggregated variance <code>V(τ)</code> is fitted by
+weighted non-linear least squares over τ from 10 s to 4 h. The sampling variance of
+<code>log V(τ)</code> grows roughly like τ, so weights ∝ 1/τ are the inverse-variance weights; in
+simulation they halve the standard deviation compared with equal weights and remove a
+spurious <code>H</code> on Brownian data. If the fractional part is not significant at 4 h, <code>H0</code> is set
+to 1/2. Code: <code>ofs.estimators.h0</code>, ADR 0008.</p>
+<p><strong>Why is the flow centred day by day in proportion to volume?</strong> Because the development
+year showed that otherwise a day-level imbalance reads as memory.
+* <strong>What failed.</strong> The negative control (signs shuffled within each day) gave 0.80
+  instead of 0.5. The shuffle keeps each day's net buying or selling, which rides on
+  bursts of activity, and the control had removed a drift uniform in time.
+* <strong>How far it goes.</strong> Without centring, memoryless signs with a 5 % daily imbalance read
+  as <code>H0 ≈ 0.98</code> in simulation.
+* <strong>The fix.</strong> Each 10-second window now loses its volume times the day's imbalance.
+  Removing a day's net increment shrinks the variance at large τ like a bridge, and the
+  fit uses that exact shape, so genuine memory is not biased.
+* <strong>The result.</strong> The shuffled control returns 0.49–0.50, and real H0 drops by about 0.03.
+* <strong>Why simulation missed it.</strong> The simulated trades arrived uniformly in time; real
+  activity clusters.
+* It was decided on development data before the confirmation year was touched, and is
+  logged as deviations D3/D4 (ADR 0015).</p>
+<h2 id="3-why-reduce-the-trades-to-additive-daily-statistics">3. Why reduce the trades to additive daily statistics?<a class="headerlink" href="#3-why-reduce-the-trades-to-additive-daily-statistics" title="Permanent link">&para;</a></h2>
+<p>Every estimator is written as <code>fit(sum of daily feature rows)</code>: sums of squared increments
+per lag, counts, cross-products. Then a bootstrap replicate is just a weight vector over
+days, the 999 replicates of 120 pair-markets never re-read a trade, raw files can be
+deleted after reduction (the 24 months would not fit otherwise), and a block of 14 days for
+the change-point monitor is one fit of 14 summed rows. Code: <code>ofs.reduce</code>,
+<code>ofs.estimators.base.Features</code>, ADR 0004.</p>
+<h2 id="4-why-a-synchronized-block-bootstrap-and-why-widen-it-by-k">4. Why a synchronized block bootstrap, and why widen it by k?<a class="headerlink" href="#4-why-a-synchronized-block-bootstrap-and-why-widen-it-by-k" title="Permanent link">&para;</a></h2>
+<p>Days are resampled by blocks (stationary bootstrap, mean 7 days) because one-day blocks
+would destroy the long memory being measured; the <em>same</em> resampled days are applied to
+every pair, because crypto pairs move together and the cross-sectional test must see that
+correlation. Under long memory, the block bootstrap still underestimates the sampling
+spread on one-year samples; the full simulation measured the ratio of true to bootstrap
+standard deviation, and its median over the principal estimators' plausible cells widens
+every interval: 1.14 at registration, 1.06 since the volume-centred <code>H0</code> (deviation D4),
+whose intervals are better calibrated. Code: <code>ofs.inference.bootstrap</code>, <code>ofs.simulate.decisions</code>.</p>
+<h2 id="5-why-simulate-before-touching-real-data-and-what-did-it-change">5. Why simulate before touching real data, and what did it change?<a class="headerlink" href="#5-why-simulate-before-touching-real-data-and-what-did-it-change" title="Permanent link">&para;</a></h2>
+<p>Every estimator is biased somewhere; the only way to know where is to run it on data with
+a known answer, through the same reduction code. The full study (82 cells × 200
+replications of 365 days) changed three choices: the paper's autocovariance GMM replaced
+the moments for <code>H_vol</code> (moments biased up to 0.079 by noise); the quadratic-variation
+ratio replaced the sign autocorrelation as control of <code>H0</code> (biased by 0.033); and it
+showed that <code>H_σ</code> near 0.1 cannot be estimated within 0.02 on one year. The rules that
+turned these numbers into decisions were written before the study ran. Code:
+<code>ofs.simulate.study</code>, pre-registration §4.1.</p>
+<h2 id="6-why-whittle-for-h_-and-why-is-h2-limited">6. Why Whittle for <code>H_σ</code>, and why is H2 "limited"?<a class="headerlink" href="#6-why-whittle-for-h_-and-why-is-h2-limited" title="Permanent link">&para;</a></h2>
+<p>Daily realised variance is a day <em>average</em> of volatility plus measurement error. The
+Whittle estimator of Fukasawa, Takabatake &amp; Westphal models exactly that (day-averaged fBm
+plus white noise) and stays consistent near <code>H = 0</code>; the GJR moment regression ignores the
+averaging and is biased upward near 0 (+0.121 in the study). Whittle still misses the 0.02
+tolerance (0.030), so H2 is reported as limited by estimator reliability. The rule's
+fallback kept GJR; deviation D1 made Whittle principal, before any real-data estimate
+(<code>config/deviations.md</code>). The theory puts <code>H_σ</code> near 0 to 0.1, exactly where estimation is
+hardest: that is a finding, not a failure.</p>
+<h2 id="7-why-rejected-compatible-undecided-with-a-margin">7. Why "rejected / compatible / undecided" with a margin?<a class="headerlink" href="#7-why-rejected-compatible-undecided-with-a-margin" title="Permanent link">&para;</a></h2>
+<p>With enough data any tiny deviation is significant, and absence of significance is not
+evidence of agreement. So a relation is <em>rejected</em> only if the Holm-corrected Wald test
+rejects at 1 % <strong>and</strong> the mean gap exceeds 0.05 (Hurst units); <em>compatible</em> only if the
+test does not reject <strong>and</strong> the 95 % interval of the gap lies within ±0.05 (an
+equivalence test); otherwise <em>undecided</em>, with the number of days that would decide. The
+same rule decides the forecasting hypotheses with a 2 % margin on the loss ratio.
+Code: <code>ofs.inference.hypotheses.decide</code>.</p>
+<h2 id="8-why-a-pre-registration-enforced-in-code">8. Why a pre-registration enforced in code?<a class="headerlink" href="#8-why-a-pre-registration-enforced-in-code" title="Permanent link">&para;</a></h2>
+<p>With four exponents, several estimators, windows, τ ranges and samples, there are hundreds
+of ways to get a "significant" result. Writing the hypotheses, estimators and decision
+rules down and tagging them (<code>prereg-v1</code>) before any real-data estimate, then freezing the
+configuration (<code>config-frozen</code>) before the confirmation sample, removes that freedom. The
+code refuses to estimate before the tags and checks that the configuration is unchanged; in
+the container, CI bakes the tag list and the config hash into the image. Every later change
+is a dated deviation. Code: <code>ofs.protocol</code>, ADR 0006.</p>
+<h2 id="9-why-an-exact-rough-predictor-qlike-and-a-lognormal-level-correction">9. Why an "exact" rough predictor, QLIKE, and a lognormal level correction?<a class="headerlink" href="#9-why-an-exact-rough-predictor-qlike-and-a-lognormal-level-correction" title="Permanent link">&para;</a></h2>
+<p>The published rough-volatility forecast (Gatheral, Jaisson &amp; Rosenbaum, 2018) assumes a
+continuously observed, noise-free fBm; daily RV is a noisy day average. Conditioning a
+Gaussian model of exactly that (the Whittle model) gives the optimal linear forecast; in
+simulation the published kernel lost 13 % of one-step MSE to it. QLIKE and MSE on levels
+rank forecasts correctly even with a noisy RV proxy (Patton, 2011), which the MSE of logs
+does not. Each log model returns to levels with its own lognormal correction: the empirical
+smearing factor was too noisy at 22 days and changed rankings. Result in simulation: about
+1 % better than HAR at one day, 7–13 % at 22 days. Code: <code>ofs.forecast</code>, ADR 0013.</p>
+<h2 id="10-what-broke-on-real-data-and-what-changed-because-of-it">10. What broke on real data, and what changed because of it?<a class="headerlink" href="#10-what-broke-on-real-data-and-what-changed-because-of-it" title="Permanent link">&para;</a></h2>
+<ul>
+<li>USD-M trade ids go missing (0.1–0.3 % from mid-2025) while aggregate ids stay
+  consecutive: continuity is checked on aggregate ids, trade-id gaps by fraction and run
+  length (ADR 0012).</li>
+<li>Futures klines may open at the previous close: the OHLC check accepts either (ADR 0009).</li>
+<li>Binance re-publishes corrected files at the same URL: a weekly checksum recheck (ADR 0010).</li>
+<li>Perpetuals keep publishing flat klines after trading stops; klines outlive trades: days
+  without trades are dropped and availability is counted on the trade listing.</li>
+<li>The USD-M WebSocket serves trades only on <code>/market</code> (the root accepts the subscription and
+  sends nothing): the collector uses two connections (ADR 0014).</li>
+<li>Operations: a shell filter deleted derived data, a closed lid killed the jobs, a restart
+  stopped them again. Hence explicit-name cleanup only, resumable jobs, and a resume script
+  (incident notes in <code>docs/incidents/</code>).</li>
+<li>Small files: on the laptop's hard disk the daily cycle of 2026-11-15 took 11 hours, nearly
+  all of it opening about 955,000 files of a few kilobytes. Closed months are now folded into
+  one file per statistic, pair and month, read back and compared before the daily files go
+  (ADR 0016); the bundles read from both layouts were identical on real data.</li>
+<li>The health check said "ok" with data 16 days old: it now reports "stale" once the last
+  verified day is more than 3 days old.</li>
+</ul>
+<h2 id="11-what-did-the-confirmation-year-show">11. What did the confirmation year show?<a class="headerlink" href="#11-what-did-the-confirmation-year-show" title="Permanent link">&para;</a></h2>
+<p>Every choice was frozen on 2026-11-14 (tag <code>config-frozen</code>) before the confirmation year
+(2025-11-01 to 2026-10-31) was estimated.</p>
+<ul>
+<li><strong>Volume (H1)</strong>: compatible on perpetuals (gap +0.001, interval −0.012 to +0.011),
+  rejected on spot (−0.119).</li>
+<li><strong>Volatility (H2)</strong>: rejected on both markets. With <code>H0</code> below 3/4 the relation predicts a
+  negative <code>H_σ</code>, which no Hurst exponent can take; the daily estimates sit on the lower
+  bound of their range, so the intervals are lopsided.</li>
+<li><strong>Impact (H3, exploratory)</strong>: rejected on spot; undecided on perpetuals, where the gap is
+  large (−0.384) but <code>H0</code> spans only 0.54 to 0.62 across pairs, too narrow to identify a
+  slope. The control estimators disagree on the size of the gap, so H3 never counts alone.</li>
+<li><strong>Level of <code>H0</code> (H4)</strong>: 0.700 on spot and 0.597 on perpetuals (development: 0.705, 0.590).</li>
+<li><strong>Forecasts (F1–F3)</strong>: at 22 days the rough predictor's loss is 27 % below HAR's for
+  volatility, but the interval is wide and the Holm-corrected test does not decide. Using
+  the order-flow <code>H</code> instead of the measured one changes forecasts by less than 1.5 %:
+  equivalent at 1 and 5 days.</li>
+</ul>
+<p>Five of the six primary decisions of the development year were reproduced. The one change,
+H3 on perpetuals (rejected, then undecided), comes from the narrow cross-section, not from a
+change of method. Numbers: the README (generated from the result tables) and <code>paper/main.pdf</code>.</p>
+<h2 id="12-what-are-the-limits-and-what-would-come-next">12. What are the limits, and what would come next?<a class="headerlink" href="#12-what-are-the-limits-and-what-would-come-next" title="Permanent link">&para;</a></h2>
+<ul>
+<li>One main venue. Bybit and OKX are an exploratory check on five pairs over one month: on
+  perpetuals they agree with Binance within 0.03 on average (<code>docs/venues.md</code>).</li>
+<li><code>H_σ</code> near zero is where the estimators are least reliable (Whittle's bias 0.030 in the
+  simulation study). H2's rejection rests on the sign of the predicted exponent more than on
+  the precision of the estimate.</li>
+<li><code>δ</code> uses a proxy of price impact built from trades; there is no order-book history (the
+  L2 collector starts one).</li>
+<li>One year per sample, and the live track record of the forecasts has only just started.</li>
+<li>Next: run the daily pipeline on a server to build that live record, extend the venue
+  comparison, and re-run the same frozen protocol on the following year as a second
+  confirmation.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "content.code.copy"], "search": "../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.a5f9d56c.min.js"></script>
+      
+    
+  </body>
+</html>
