@@ -2,7 +2,7 @@
 # One image for the three services (pipeline, api, dashboard); multi-arch (amd64 + arm64 Ampere A1).
 FROM ghcr.io/astral-sh/uv:0.13.7 AS uv
 
-FROM python:3.12-slim-bookworm
+FROM python:3.15-slim-bookworm
 ARG TARGETARCH
 ARG SUPERCRONIC_VERSION=v0.2.51
 ARG SUPERCRONIC_SHA256_amd64=cc232108374e8e2b537045f2d5eaa1229f619db314c3ba6a14d38b35dc0aa123
