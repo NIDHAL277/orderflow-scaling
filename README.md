@@ -213,10 +213,13 @@ for reduced motion.
   PAXG and WBTC left out by decision: the results say nothing about illiquid pairs.
 * **Statistical forecasts only.** QLIKE and squared error; no trading rule or P&L, by
   design.
-* **Not deployed publicly yet.** The stack runs from the Docker image on the development
-  machine; the [cloud guide](docs/deploy-oracle.md) is ready but not yet executed.
+* **Not deployed publicly.** The stack runs from the Docker image on the development
+  machine. The image is public for amd64 and arm64
+  (`docker pull ghcr.io/nidhal277/orderflow-scaling:1.0.0`; the arm64 build was tested under
+  emulation), and the [cloud guide](docs/deploy-oracle.md) describes a deployment on a free
+  Oracle Cloud machine for anyone who wants one.
 
-## Status (2026-11-16)
+## Status (2026-11-18)
 
 | Phase | State |
 |---|---|
@@ -225,7 +228,7 @@ for reduced motion.
 | P2 Simulation and estimators | done: full study (82 cells, 200 replications of 365 days); estimator roles and calibration k fixed by the pre-registered rule (1.14, then 1.06 after the H0 re-run of D4); `H_σ` flagged as limited |
 | P3 Full universe, development | done: 60 pairs, 59 perpetuals (PAXG and WBTC left out by decision); 24-month backfill (2024-11-01 → 2026-10-31) with 86,694 of 86,870 pair-days reduced, 145 rejected by a control and none unexplained (O1 met); 5-year daily-volatility history; development estimates, tests and forecasts run twice, before and after deviations D3 and D4 |
 | P4 Confirmation and tests | done: configuration frozen on 2026-11-14 (tag `config-frozen`) before the first estimate on the confirmation sample; confirmation run finished on 2026-11-16, results at the top of this page |
-| P5 Production | Docker, compose, Caddy, cron, Healthchecks, R2 backups; the daily run replays late files and applies re-published ones; image built and tested locally (command line, API, dashboard); dashboard redesigned (seven pages, an overview first) and served with the API from the image on the development machine; the CI job rehearsed in a Linux container; guide and set-up script for an Oracle Cloud VM ready, deployment pending |
+| P5 Production | Docker, compose, Caddy, cron, Healthchecks, R2 backups; the daily run replays late files and applies re-published ones; image built and tested locally (command line, API, dashboard); dashboard redesigned (seven pages, an overview first) and served with the API from the image on the development machine; the CI job rehearsed in a Linux container; image public on GHCR for amd64 and arm64 since release v1.0.0 (2026-11-18); guide and set-up script for an Oracle Cloud VM written; not deployed publicly (decided on 2026-11-18) |
 | P6 Report | LaTeX paper and 10-slide deck built from the generated figures and tables (tests, levels, reading aids, controls, power); confirmation results in, conclusion written: [paper](paper/main.pdf), [slides](paper/slides.pdf) |
 | Forecasting (F) | models, evaluation, live forecasts, API, dashboard page and report table done and validated on simulated rough volatility; development and confirmation runs on real data done (results at the top of this page) |
 | Spec extensions | change-point monitor of `H0` and L2 collector done (collector checked live: 2,446 trades, 0 resyncs in 20 s); `H0` compared with two other exchanges on their public trades ([Bybit and OKX, exploratory](docs/venues.md)); kdb+/q not started (needs a licence) |
